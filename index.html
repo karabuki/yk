@@ -19,7 +19,6 @@
     --text: #e8e4f0;
     --muted: #7a7488;
     --danger: #ff5757;
-    --warn: #ffaa00;
   }
 
   html, body {
@@ -30,12 +29,12 @@
     overflow: hidden;
   }
 
-  /* ── LAYOUT ─────────────────────────────── */
+  /* ── LAYOUT ── */
   #app { display: flex; height: 100vh; width: 100vw; }
 
-  /* LEFT PANEL */
+  /* ── SIDEBAR (compact) ── */
   #sidebar {
-    width: 280px; min-width: 280px;
+    width: 200px; min-width: 200px;
     background: var(--surface);
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
@@ -43,207 +42,203 @@
   }
 
   #sidebar-header {
-    padding: 20px 20px 16px;
+    padding: 8px 10px 7px;
     border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 6px;
   }
   #sidebar-header h1 {
     font-family: 'Syne', sans-serif;
-    font-weight: 800; font-size: 18px;
-    letter-spacing: -0.5px;
-    color: var(--accent);
+    font-weight: 800; font-size: 13px;
+    color: var(--accent); letter-spacing: -.3px;
   }
-  #sidebar-header p { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  #sidebar-header p { font-size: 9px; color: var(--muted); }
 
   /* RECT LIST */
-  #rect-list-wrap {
-    flex: 1; overflow-y: auto; padding: 12px;
-  }
-  #rect-list-wrap::-webkit-scrollbar { width: 4px; }
-  #rect-list-wrap::-webkit-scrollbar-track { background: transparent; }
+  #rect-list-wrap { flex: 1; overflow-y: auto; padding: 6px; }
+  #rect-list-wrap::-webkit-scrollbar { width: 3px; }
   #rect-list-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  .section-label {
-    font-size: 9px; letter-spacing: 2px;
-    text-transform: uppercase; color: var(--muted);
-    padding: 8px 4px 6px; font-weight: 500;
+  .group-header {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 2px 3px;
+    margin-top: 6px;
+    border-bottom: 1.5px solid;
   }
+  .group-header:first-child { margin-top: 2px; }
+  .group-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1.5px solid; }
+  .group-name { font-size: 9px; font-weight: 600; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .rect-item {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px; margin-bottom: 4px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 6px; margin-bottom: 2px;
     background: var(--surface2);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 4px;
     cursor: grab;
-    transition: border-color .15s, background .15s;
+    transition: border-color .12s;
     user-select: none;
   }
-  .rect-item:hover { border-color: var(--accent2); background: #2a2538; }
-  .rect-item.placed { border-color: #3d3550; opacity: .6; }
-  .rect-item.dragging-from-list { opacity: .4; }
-
-  .rect-color-swatch {
-    width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
-  }
+  .rect-item:hover { background: #2a2538; }
+  .rect-item.placed { opacity: .55; }
+  .rect-color-swatch { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; border: 1px solid; }
   .rect-item-info { flex: 1; min-width: 0; }
-  .rect-item-name { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rect-item-dims { font-size: 9px; color: var(--muted); margin-top: 1px; }
+  .rect-item-name { font-size: 9px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rect-item-dims { font-size: 8px; color: var(--muted); }
+  .placed-badge { font-size: 7px; padding: 1px 4px; color: #fff; border-radius: 8px; letter-spacing: .3px; flex-shrink:0; }
 
-  .placed-badge {
-    font-size: 8px; padding: 1px 5px;
-    background: var(--accent2); color: #fff;
-    border-radius: 10px; letter-spacing: .5px;
-  }
-
-  /* BOTTOM PANEL */
+  /* SIDEBAR BOTTOM */
   #sidebar-bottom {
     border-top: 1px solid var(--border);
-    padding: 12px;
-    display: flex; flex-direction: column; gap: 8px;
+    padding: 7px;
+    display: flex; flex-direction: column; gap: 5px;
   }
-
-  /* STATS */
-  #stats-bar {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-  }
-  .stat-row { display: flex; justify-content: space-between; align-items: baseline; }
-  .stat-label { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
-  .stat-val { font-size: 16px; font-family: 'Syne', sans-serif; font-weight: 700; color: var(--accent); }
-  .stat-sub { font-size: 9px; color: var(--muted); margin-top: 2px; }
-
-  /* BUTTONS */
-  .btn {
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 8px 14px; border-radius: 6px;
-    font-family: 'DM Mono', monospace; font-size: 11px;
-    border: 1px solid var(--border);
-    cursor: pointer; transition: all .15s;
-    background: var(--surface2); color: var(--text);
-    white-space: nowrap;
-  }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.accent { background: var(--accent); color: #0f0e11; border-color: var(--accent); font-weight: 600; }
-  .btn.accent:hover { background: #aadd44; }
-  .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
-  .btn-row { display: flex; gap: 6px; }
-
-  /* FILE INPUT */
   #csv-label {
-    display: flex; align-items: center; gap: 6px;
-    padding: 8px 14px; border-radius: 6px;
-    font-size: 11px; border: 1px dashed var(--border);
-    cursor: pointer; transition: all .15s;
-    color: var(--muted); justify-content: center;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 5px 8px; border-radius: 5px;
+    font-size: 9px; border: 1px dashed var(--border);
+    cursor: pointer; transition: all .12s; color: var(--muted);
   }
   #csv-label:hover { border-color: var(--accent); color: var(--accent); }
   #csv-input { display: none; }
+  .btn-row { display: flex; gap: 5px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    padding: 5px 8px; border-radius: 4px;
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    border: 1px solid var(--border);
+    cursor: pointer; transition: all .12s;
+    background: var(--surface2); color: var(--text); white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.accent { background: var(--accent); color: #0f0e11; border-color: var(--accent); font-weight: 700; }
+  .btn.accent:hover { background: #aadd44; }
+  .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
 
-  /* ARTBOARD AREA */
+  /* ── CANVAS AREA ── */
   #canvas-area {
     flex: 1; display: flex; flex-direction: column;
-    background: var(--bg);
-    overflow: hidden; position: relative;
+    background: var(--bg); overflow: hidden; position: relative;
+    min-width: 0;
   }
 
+  /* TOOLBAR (compact) */
   #toolbar {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 5px 10px; border-bottom: 1px solid var(--border);
     background: var(--surface); flex-shrink: 0;
   }
-  #toolbar .tbar-label { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+  .tbar-label { font-size: 8px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+  .tbar-unit  { font-size: 8px; color: var(--muted); }
   #toolbar input[type=number] {
-    width: 70px; padding: 5px 8px;
+    width: 58px; padding: 3px 5px;
     background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 4px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px;
+    border-radius: 3px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 10px;
   }
   #toolbar input[type=number]:focus { outline: none; border-color: var(--accent); }
-  .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+  .sep { width: 1px; height: 14px; background: var(--border); margin: 0 2px; }
 
-  /* CANVAS VIEWPORT */
+  /* ── VIEWPORT (auto-fit) ── */
   #viewport {
     flex: 1; overflow: auto; position: relative;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 20px 0;
   }
-  #viewport::-webkit-scrollbar { width: 6px; height: 6px; }
-  #viewport::-webkit-scrollbar-track { background: var(--bg); }
+  #viewport::-webkit-scrollbar { width: 5px; height: 5px; }
   #viewport::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-  #scene {
-    position: relative;
-    flex-shrink: 0;
-    margin: 40px;
+  /* boards-wrap: 複数アートボードを縦に並べる */
+  #boards-wrap {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 32px;
+    padding: 12px 32px 32px;
   }
 
-  #artboard {
-    position: absolute; top: 0; left: 0;
+  /* 各アートボード+ラベルのコンテナ */
+  .board-container {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .board-label {
+    font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase;
+  }
+
+  /* scene: padding gives space around artboard */
+  .scene {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  /* artboard */
+  .artboard {
+    position: relative;
     background: #ffffff;
-    box-shadow: 0 0 0 1px var(--border), 0 8px 40px rgba(0,0,0,.6);
+    outline: 1px solid #999999;
+    box-shadow: 0 0 0 1px #cccccc, 0 6px 32px rgba(0,0,0,.55);
   }
 
   /* PLACED RECTS */
   .placed-rect {
     position: absolute;
     border: 2px solid transparent;
-    border-radius: 2px;
+    border-radius: 1px;
     cursor: grab;
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
-    transition: box-shadow .12s;
+    transition: box-shadow .1s;
     user-select: none;
   }
   .placed-rect:hover { z-index: 50 !important; box-shadow: 0 0 0 2px var(--accent); }
-  .placed-rect.selected { box-shadow: 0 0 0 2.5px var(--accent) !important; z-index: 100 !important; }
-  .placed-rect.dragging { opacity: .82; cursor: grabbing; z-index: 200 !important; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
-  .placed-rect.collision { box-shadow: 0 0 0 2.5px var(--danger) !important; }
+  .placed-rect.selected { box-shadow: 0 0 0 2px var(--accent) !important; z-index: 100 !important; }
+  .placed-rect.dragging { opacity: .85; cursor: grabbing; z-index: 200 !important; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+  .placed-rect.collision { box-shadow: 0 0 0 2px var(--danger) !important; }
   .rect-label {
-    font-size: 9px; font-family: 'DM Mono', monospace;
-    color: rgba(0,0,0,.65); pointer-events: none;
-    text-align: center; padding: 2px 4px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 100%;
+    font-size: 7px; font-family: 'DM Mono', monospace;
+    color: rgba(0,0,0,.6); pointer-events: none;
+    text-align: center; padding: 1px 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
   }
 
-  /* GHOST RECT during list-drag */
+  /* GHOST */
   #ghost-rect {
     position: fixed; pointer-events: none;
-    background: rgba(200,255,87,.25);
-    border: 2px solid var(--accent);
-    border-radius: 2px;
+    background: rgba(200,255,87,.2);
+    border: 1.5px solid var(--accent);
+    border-radius: 1px;
     display: none; z-index: 9999;
   }
 
-  /* ROTATE BUTTON floating */
+  /* ROTATE BTN */
   #rotate-btn {
-    position: fixed; z-index: 500;
-    display: none;
+    position: fixed; z-index: 500; display: none;
     background: var(--accent); color: #0f0e11;
     border: none; border-radius: 50%;
-    width: 32px; height: 32px;
-    font-size: 14px; cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0,0,0,.5);
+    width: 26px; height: 26px; font-size: 12px;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.5);
     align-items: center; justify-content: center;
-    transition: transform .15s;
+    transition: transform .12s;
   }
   #rotate-btn:hover { transform: scale(1.1) rotate(20deg); }
   #rotate-btn.visible { display: flex; }
 
-  /* TOTAL AREA FLOATING BADGE */
+  /* AREA BADGE (right-bottom) */
   #area-badge {
-    position: fixed; bottom: 20px; right: 20px;
+    position: fixed; bottom: 16px; right: 16px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 18px;
-    z-index: 300;
-    pointer-events: none;
-    backdrop-filter: blur(8px);
+    border-radius: 8px;
+    padding: 8px 12px;
+    z-index: 300; pointer-events: none;
+    min-width: 160px;
   }
-  #area-badge .ab-label { font-size: 8px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
-  #area-badge .ab-val { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--accent); }
-  #area-badge .ab-unit { font-size: 10px; color: var(--muted); }
+  .ab-label { font-size: 7px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+
+  /* EMPTY HINT */
+  #empty-hint {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none; color: var(--muted); gap: 6px; font-size: 10px;
+  }
+  #empty-hint .icon { font-size: 24px; opacity: .3; }
 
   /* EXPORT MODAL */
   #export-modal {
@@ -254,47 +249,29 @@
   }
   #export-modal.open { display: flex; }
   #export-dialog {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 28px; min-width: 360px;
-    max-width: 420px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 22px; min-width: 320px;
   }
-  #export-dialog h2 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 20px; }
-  .form-group { margin-bottom: 16px; }
-  .form-group label { display: block; font-size: 10px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  #export-dialog h2 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; font-size: 9px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 5px; }
   .form-group select, .form-group input[type=text] {
-    width: 100%; padding: 8px 10px;
+    width: 100%; padding: 6px 8px;
     background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 6px; color: var(--text);
-    font-family: 'DM Mono', monospace; font-size: 12px;
+    border-radius: 5px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 11px;
   }
   .form-group select:focus, .form-group input:focus { outline: none; border-color: var(--accent); }
-  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
 
   /* TOAST */
   #toast {
-    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
     background: var(--surface2); border: 1px solid var(--border);
-    padding: 8px 18px; border-radius: 20px; font-size: 11px;
-    opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 2000;
-    white-space: nowrap;
+    padding: 6px 14px; border-radius: 16px; font-size: 10px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 2000; white-space: nowrap;
   }
   #toast.show { opacity: 1; }
-
-  /* EMPTY STATE */
-  #empty-hint {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    pointer-events: none; color: var(--muted); gap: 8px; font-size: 12px;
-  }
-  #empty-hint .icon { font-size: 32px; opacity: .3; }
-
-  /* SNAP INDICATOR */
-  .snap-line {
-    position: absolute; background: var(--accent);
-    opacity: .5; pointer-events: none; z-index: 150;
-  }
 </style>
 </head>
 <body>
@@ -304,30 +281,21 @@
   <div id="sidebar">
     <div id="sidebar-header">
       <h1>RectPlacer</h1>
-      <p>矩形アートボード配置ツール</p>
+      <p>配置ツール</p>
     </div>
 
     <div id="rect-list-wrap">
-      <div class="section-label">矩形リスト</div>
       <div id="rect-list"></div>
     </div>
 
     <div id="sidebar-bottom">
-      <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:4px 2px 6px">配置面積（BBox）</div>
-      <div id="stats-bar">
-        <div class="stat-row">
-          <span class="stat-label">配置済み面積</span>
-          <span class="stat-val" id="stat-area">0</span>
-        </div>
-        <div class="stat-sub" id="stat-sub">0 / 0 個配置 — mm²</div>
-      </div>
       <label id="csv-label" for="csv-input">
-        <span>📂</span> CSVを読み込む
+        <span>📂</span> CSV読み込み
       </label>
       <input type="file" id="csv-input" accept=".csv,text/csv">
       <div class="btn-row">
-        <button class="btn danger" id="clear-btn" style="flex:1">🗑 クリア</button>
-        <button class="btn accent" id="export-btn" style="flex:1">↑ エクスポート</button>
+        <button class="btn danger" id="clear-btn" style="flex:1">🗑</button>
+        <button class="btn accent" id="export-btn" style="flex:2">↑ 書き出し</button>
       </div>
     </div>
   </div>
@@ -335,27 +303,25 @@
   <!-- CANVAS AREA -->
   <div id="canvas-area">
     <div id="toolbar">
-      <span class="tbar-label">アートボード</span>
-      <input type="number" id="ab-w" value="1088" min="1" max="10000" step="0.1"> × 
+      <span class="tbar-label">AB</span>
+      <input type="number" id="ab-w" value="1088" min="1" max="10000" step="0.1">
+      <span class="tbar-unit">×</span>
       <input type="number" id="ab-h" value="738" min="1" max="10000" step="0.1">
-      <span style="font-size:10px;color:var(--muted)">mm</span>
-      <button class="btn" id="apply-ab-btn">適用</button>
+      <span class="tbar-unit">mm</span>
+      <button class="btn" id="apply-ab-btn" style="padding:3px 8px">適用</button>
       <div class="sep"></div>
-      <span class="tbar-label">スナップ距離</span>
-      <input type="number" id="snap-dist" value="5" min="0" max="50" step="0.5" style="width:60px">
-      <span style="font-size:10px;color:var(--muted)">mm</span>
+      <span class="tbar-label">SNAP</span>
+      <input type="number" id="snap-dist" value="5" min="0" max="50" step="0.5" style="width:44px">
+      <span class="tbar-unit">mm</span>
       <div class="sep"></div>
-      <button class="btn" id="rotate-selected-btn" title="選択矩形を90°回転">↻ 回転</button>
+      <button class="btn" id="rotate-selected-btn" style="padding:3px 8px">↻ 回転</button>
+      <div class="sep"></div>
+      <button class="btn" id="auto-place-btn" style="padding:3px 10px;background:#2a2538;border-color:#7b5ea7;color:#c8b8ff;font-weight:600">⚡ 自動配置</button>
     </div>
 
     <div id="viewport">
-      <div id="scene">
-        <div id="artboard"></div>
-        <div id="empty-hint">
-          <div class="icon">⬜</div>
-          <div>CSVを読み込んで矩形をドラッグ配置</div>
-          <div style="font-size:10px;opacity:.6">name, width(mm), height(mm)</div>
-        </div>
+      <div id="boards-wrap">
+        <!-- アートボードは動的に生成 -->
       </div>
     </div>
   </div>
@@ -410,12 +376,8 @@
 <script>
 /* ═══════════════════════════════════════════════════════
    UNIT SYSTEM
-   Internal unit = mm. Screen rendering uses px at a scale factor.
-   1mm = MM_TO_PX px on screen (adjustable via zoom).
+   Internal unit = mm. scale is computed dynamically per viewport.
 ═══════════════════════════════════════════════════════ */
-const MM_TO_PX = 1.5;  // screen scale: 1mm → 1.5px (adjustable)
-function mmToPx(mm) { return mm * MM_TO_PX; }
-function pxToMm(px) { return px / MM_TO_PX; }
 function roundMm(v, decimals=2) { return Math.round(v * 10**decimals) / 10**decimals; }
 
 /* ═══════════════════════════════════════════════════════
@@ -423,8 +385,22 @@ function roundMm(v, decimals=2) { return Math.round(v * 10**decimals) / 10**deci
 ═══════════════════════════════════════════════════════ */
 let csvGroups = [];  // { id, fileName, fill, border }
 let rects = [];     // { id, groupId, name, w, h, fill, border }
-let placed = [];    // { id, rectId, groupId, x, y, w, h, fill, border, name }
+
+// boards: 複数アートボード
+// placed items now belong to a board
+let boards = [];    // { id, placed:[] }  placed: { id, rectId, groupId, x, y, w, h, fill, border, name }
+let currentBoardId = 1;
+let nextBoardId = 1;
+
+// legacy flat accessor for collision etc (active board)
+function getPlaced(boardId) {
+  const b = boards.find(b => b.id === boardId);
+  return b ? b.placed : [];
+}
+function allPlaced() { return boards.flatMap(b => b.placed); }
+
 let selectedId = null;
+let selectedBoardId = null;
 let artboardW = 1088, artboardH = 738;  // mm
 let snapDist = 5;   // mm
 let nextPlacedId = 1;
@@ -448,36 +424,89 @@ function nextGroupPalette() { return GROUP_PALETTE[groupPaletteIdx++ % GROUP_PAL
 /* ═══════════════════════════════════════════════════════
    DOM REFS
 ═══════════════════════════════════════════════════════ */
-const artboard = document.getElementById('artboard');
-const scene = document.getElementById('scene');
+const boardsWrap = document.getElementById('boards-wrap');
 const rectListEl = document.getElementById('rect-list');
-const rotateBtn = document.getElementById('rotate-btn');
-const emptyHint = document.getElementById('empty-hint');
-const ghostEl = document.getElementById('ghost-rect');
-const viewport = document.getElementById('viewport');
+const rotateBtn  = document.getElementById('rotate-btn');
+const ghostEl    = document.getElementById('ghost-rect');
+const viewport   = document.getElementById('viewport');
 
 /* ═══════════════════════════════════════════════════════
-   ARTBOARD SETUP
+   ARTBOARD SETUP  —  auto-fit scale
 ═══════════════════════════════════════════════════════ */
-function applyArtboard() {
-  const wPx = mmToPx(artboardW);
-  const hPx = mmToPx(artboardH);
-  artboard.style.width  = wPx + 'px';
-  artboard.style.height = hPx + 'px';
-  scene.style.width  = wPx + 'px';
-  scene.style.height = hPx + 'px';
+let scale = 1;
+
+function calcScale() {
+  const pad = 80;
+  const vw = viewport.clientWidth  - pad;
+  const vh = viewport.clientHeight - pad;
+  return Math.min(vw / artboardW, vh / artboardH, 2);
 }
+
+function mmToPx(mm) { return mm * scale; }
+function pxToMm(px) { return px / scale; }
+
+function ensureBoard(boardId) {
+  if (!boards.find(b => b.id === boardId)) {
+    boards.push({ id: boardId, placed: [] });
+  }
+  return boards.find(b => b.id === boardId);
+}
+
+function getBoardEl(boardId) {
+  return document.getElementById('artboard-' + boardId);
+}
+
+function renderAllBoards() {
+  scale = calcScale();
+  boardsWrap.innerHTML = '';
+
+  if (!boards.length) {
+    // Show empty state on a single blank board
+    const wPx = mmToPx(artboardW), hPx = mmToPx(artboardH);
+    boardsWrap.innerHTML = `
+      <div class="board-container">
+        <div class="board-label">アートボード 1</div>
+        <div class="scene" style="width:${wPx}px;height:${hPx}px">
+          <div class="artboard" id="artboard-empty" style="width:${wPx}px;height:${hPx}px">
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#aaa;gap:8px;font-size:11px;pointer-events:none">
+              <div style="font-size:28px;opacity:.3">⬜</div>
+              <div>CSVを読み込んで矩形をドラッグまたは自動配置</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  boards.forEach((board, idx) => {
+    const wPx = mmToPx(artboardW), hPx = mmToPx(artboardH);
+    const container = document.createElement('div');
+    container.className = 'board-container';
+    container.innerHTML = `
+      <div class="board-label">アートボード ${idx + 1}</div>
+      <div class="scene" style="width:${wPx}px;height:${hPx}px">
+        <div class="artboard" id="artboard-${board.id}" style="width:${wPx}px;height:${hPx}px"></div>
+      </div>`;
+    boardsWrap.appendChild(container);
+
+    const abEl = container.querySelector('.artboard');
+    abEl.addEventListener('mousedown', e => {
+      if (e.target === abEl) selectRect(null, null);
+    });
+
+    board.placed.forEach(p => renderPlacedRect(p, board.id));
+  });
+}
+
+const resizeObs = new ResizeObserver(() => renderAllBoards());
+resizeObs.observe(viewport);
 
 document.getElementById('apply-ab-btn').onclick = () => {
   artboardW = parseFloat(document.getElementById('ab-w').value) || 1088;
   artboardH = parseFloat(document.getElementById('ab-h').value) || 738;
-  applyArtboard();
-  // re-render all placed rects (positions stay in mm, just repaint)
-  placed.forEach(p => renderPlacedRect(p));
+  renderAllBoards();
 };
 document.getElementById('snap-dist').onchange = e => { snapDist = parseFloat(e.target.value) || 5; };
-
-applyArtboard();
 
 /* ═══════════════════════════════════════════════════════
    CSV IMPORT  (quoted CSV, cols: 0=フォルダ,1=ファイル名,2=レイヤー,
@@ -556,48 +585,42 @@ document.getElementById('csv-input').onchange = function(e) {
   this.value = '';
 };
 
-/* ═══════════════════════════════════════════════════════
-   SIDEBAR RENDER  (grouped by CSV)
-═══════════════════════════════════════════════════════ */
 function renderSidebar() {
   rectListEl.innerHTML = '';
   if (!rects.length) {
-    rectListEl.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px 4px">CSVを読み込んでください</div>';
+    rectListEl.innerHTML = '<div style="font-size:9px;color:var(--muted);padding:6px 2px">CSVを読み込んでください</div>';
     return;
   }
 
-  // Group rects by csvGroup
   csvGroups.forEach(grp => {
     const groupRects = rects.filter(r => r.groupId === grp.id);
     if (!groupRects.length) return;
 
-    // Group header
+    // 8桁コードのみ抽出 (先頭の数字列 or ファイル名から)
+    const codeMatch = grp.fileName.match(/\d{8}/);
+    const displayName = codeMatch ? codeMatch[0] : grp.fileName.replace(/\.csv$/i, '');
+
     const header = document.createElement('div');
-    header.style.cssText = `
-      display:flex; align-items:center; gap:6px;
-      padding: 6px 4px 4px;
-      margin-top: 8px;
-      border-bottom: 2px solid ${grp.border};
-    `;
+    header.className = 'group-header';
+    header.style.borderColor = grp.border;
     header.innerHTML = `
-      <div style="width:10px;height:10px;border-radius:2px;background:${grp.fill};border:1.5px solid ${grp.border};flex-shrink:0"></div>
-      <span style="font-size:9px;color:${grp.border};letter-spacing:1px;text-transform:uppercase;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${grp.fileName}</span>
+      <div class="group-dot" style="background:${grp.fill};border-color:${grp.border}"></div>
+      <span class="group-name" style="color:${grp.border}">${displayName}</span>
     `;
     rectListEl.appendChild(header);
 
     groupRects.forEach(r => {
-      const isPlaced = placed.some(p => p.rectId === r.id);
+      const isPlaced = allPlaced().some(p => p.rectId === r.id);
       const div = document.createElement('div');
       div.className = 'rect-item' + (isPlaced ? ' placed' : '');
-      div.dataset.rectId = r.id;
-      div.style.borderColor = isPlaced ? grp.border + '55' : grp.border + 'aa';
+      div.style.borderColor = isPlaced ? grp.border + '44' : grp.border + '99';
       div.innerHTML = `
-        <div class="rect-color-swatch" style="background:${grp.fill};border:1.5px solid ${grp.border}"></div>
+        <div class="rect-color-swatch" style="background:${grp.fill};border-color:${grp.border}"></div>
         <div class="rect-item-info">
-          <div class="rect-item-name">${r.name}</div>
-          <div class="rect-item-dims">${r.w} × ${r.h} mm</div>
+          <div class="rect-item-name">#${r.name.split('#')[1] || r.name}</div>
+          <div class="rect-item-dims">${r.w}×${r.h}mm</div>
         </div>
-        ${isPlaced ? '<span class="placed-badge" style="background:' + grp.border + '">配置済</span>' : ''}
+        ${isPlaced ? `<span class="placed-badge" style="background:${grp.border}">✓</span>` : ''}
       `;
       div.addEventListener('mousedown', e => startListDrag(e, r));
       rectListEl.appendChild(div);
@@ -610,7 +633,7 @@ function renderSidebar() {
    面積 = グループごとの配置済み矩形群のバウンディングボックス面積
 ═══════════════════════════════════════════════════════ */
 function calcGroupBbox(groupId) {
-  const ps = placed.filter(p => p.groupId === groupId);
+  const ps = allPlaced().filter(p => p.groupId === groupId);
   if (!ps.length) return null;
   const minX = Math.min(...ps.map(p => p.x));
   const minY = Math.min(...ps.map(p => p.y));
@@ -620,70 +643,44 @@ function calcGroupBbox(groupId) {
 }
 
 function updateStats() {
-  const statsBar = document.getElementById('stats-bar');
   const badgeGroups = document.getElementById('badge-groups');
-  statsBar.innerHTML = '';
-
-  const totalPlaced = placed.length;
-  const totalRects  = rects.length;
-
-  if (!csvGroups.length || !totalPlaced) {
-    statsBar.innerHTML = `
-      <div class="stat-row">
-        <span class="stat-label">配置済み面積</span>
-        <span class="stat-val">0</span>
-      </div>
-      <div class="stat-sub">${totalPlaced} / ${totalRects} 個配置 — mm²</div>
-    `;
-    if (badgeGroups) badgeGroups.innerHTML = '';
+  if (!badgeGroups) return;
+  const ap = allPlaced();
+  if (!csvGroups.length || !ap.length) {
+    badgeGroups.innerHTML = '<div style="font-size:9px;color:var(--muted)">矩形未配置</div>';
     return;
   }
-
-  let badgeHTML = '';
+  let html = '';
   csvGroups.forEach(grp => {
     const bbox = calcGroupBbox(grp.id);
-    const gPlaced = placed.filter(p => p.groupId === grp.id).length;
+    const gPlaced = ap.filter(p => p.groupId === grp.id).length;
     const gTotal  = rects.filter(r => r.groupId === grp.id).length;
     if (!gTotal) return;
-
     const areaStr = bbox ? Math.round(bbox.area).toLocaleString('ja-JP') : '—';
     const wStr    = bbox ? bbox.w.toFixed(1) : '—';
     const hStr    = bbox ? bbox.h.toFixed(1) : '—';
-
-    statsBar.innerHTML += `
-      <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
-          <div style="width:8px;height:8px;border-radius:1px;background:${grp.fill};border:1.5px solid ${grp.border};flex-shrink:0"></div>
-          <span style="font-size:9px;color:${grp.border};font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px">${grp.fileName}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <span style="font-size:9px;color:var(--muted)">BBox面積</span>
-          <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:${grp.border}">${areaStr}</span>
-        </div>
-        <div style="font-size:9px;color:var(--muted);margin-top:1px">${wStr} × ${hStr} mm — ${gPlaced}/${gTotal}個</div>
-      </div>
-    `;
-
-    badgeHTML += `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-      <div style="width:8px;height:8px;border-radius:1px;background:${grp.fill};border:1.5px solid ${grp.border};flex-shrink:0"></div>
-      <span style="font-size:10px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${grp.fileName.replace(/\.csv$/i,'')}</span>
-      <span style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:${grp.border}">${areaStr} mm²</span>
-    </div>`;
+    const codeMatch = grp.fileName.match(/\d{8}/);
+    const label = codeMatch ? codeMatch[0] : grp.fileName.replace(/\.csv$/i,'');
+    html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <div style="width:7px;height:7px;border-radius:1px;background:${grp.fill};border:1.5px solid ${grp.border};flex-shrink:0"></div>
+      <span style="font-size:9px;color:var(--muted);flex:1">${label} ${gPlaced}/${gTotal}</span>
+      <span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:${grp.border}">${areaStr}</span>
+    </div>
+    <div style="font-size:8px;color:var(--muted);margin-bottom:6px;padding-left:13px">${wStr}×${hStr} mm²</div>`;
   });
-
-  if (badgeGroups) badgeGroups.innerHTML = badgeHTML;
+  badgeGroups.innerHTML = html;
 }
 
 /* ═══════════════════════════════════════════════════════
-   COLLISION DETECTION
+   COLLISION & BOUNDS
 ═══════════════════════════════════════════════════════ */
 function rectsOverlap(a, b) {
   return !(a.x + a.w <= b.x || b.x + b.w <= a.x ||
            a.y + a.h <= b.y || b.y + b.h <= a.y);
 }
 
-function hasCollision(candidate, excludeId = null) {
-  for (const p of placed) {
+function hasCollision(candidate, boardId, excludeId = null) {
+  for (const p of getPlaced(boardId)) {
     if (p.id === excludeId) continue;
     if (rectsOverlap(candidate, p)) return true;
   }
@@ -696,23 +693,17 @@ function isInBounds(r) {
 
 /* ═══════════════════════════════════════════════════════
    SNAP TO CORNERS
-   Find nearest corner-alignment among placed rects
 ═══════════════════════════════════════════════════════ */
-function snapToCorners(candidate, excludeId = null) {
+function snapToCorners(candidate, boardId, excludeId = null) {
   let best = null, bestDist = Infinity;
-
-  // The 4 corners of candidate: TL, TR, BL, BR
-  // Each can snap to a corner of another rect
   const candCorners = [
-    { dx: 0,         dy: 0 },          // TL
-    { dx: -candidate.w, dy: 0 },       // TR→TL
-    { dx: 0,         dy: -candidate.h },// BL→TL
-    { dx: -candidate.w, dy: -candidate.h }, // BR→TL
+    { dx: 0,           dy: 0 },
+    { dx: -candidate.w, dy: 0 },
+    { dx: 0,           dy: -candidate.h },
+    { dx: -candidate.w, dy: -candidate.h },
   ];
-
-  for (const p of placed) {
+  for (const p of getPlaced(boardId)) {
     if (p.id === excludeId) continue;
-    // corners of p: TL, TR, BL, BR
     const pCorners = [
       { x: p.x,       y: p.y },
       { x: p.x + p.w, y: p.y },
@@ -721,20 +712,97 @@ function snapToCorners(candidate, excludeId = null) {
     ];
     for (const pc of pCorners) {
       for (const cc of candCorners) {
-        const nx = pc.x + cc.dx;
-        const ny = pc.y + cc.dy;
+        const nx = pc.x + cc.dx, ny = pc.y + cc.dy;
         const dist = Math.hypot(candidate.x - nx, candidate.y - ny);
         if (dist < snapDist && dist < bestDist) {
           const snapped = { ...candidate, x: nx, y: ny };
-          if (!hasCollision(snapped, excludeId) && isInBounds(snapped)) {
-            best = { x: nx, y: ny };
-            bestDist = dist;
+          if (!hasCollision(snapped, boardId, excludeId) && isInBounds(snapped)) {
+            best = { x: nx, y: ny }; bestDist = dist;
           }
         }
       }
     }
   }
   return best;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RENDER PLACED RECT
+═══════════════════════════════════════════════════════ */
+function renderPlacedRect(p, boardId) {
+  const abEl = getBoardEl(boardId);
+  if (!abEl) return;
+  let el = document.getElementById('placed-' + p.id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'placed-' + p.id;
+    el.className = 'placed-rect';
+    el.dataset.boardId = boardId;
+    const num = p.name.split('#')[1] || p.name;
+    el.innerHTML = `<span class="rect-label">#${num}</span>`;
+    abEl.appendChild(el);
+    el.addEventListener('mousedown', e => startBoardDrag(e, p.id, boardId));
+  }
+  el.style.left        = mmToPx(p.x) + 'px';
+  el.style.top         = mmToPx(p.y) + 'px';
+  el.style.width       = mmToPx(p.w) + 'px';
+  el.style.height      = mmToPx(p.h) + 'px';
+  el.style.background  = p.fill;
+  el.style.borderColor = p.border;
+}
+
+function removePlacedEl(id) {
+  const el = document.getElementById('placed-' + id);
+  if (el) el.remove();
+}
+
+/* ═══════════════════════════════════════════════════════
+   SELECT
+═══════════════════════════════════════════════════════ */
+function selectRect(id, boardId) {
+  if (selectedId) {
+    const old = document.getElementById('placed-' + selectedId);
+    if (old) old.classList.remove('selected');
+  }
+  selectedId = id; selectedBoardId = boardId;
+  if (id) {
+    const el = document.getElementById('placed-' + id);
+    if (el) { el.classList.add('selected'); showRotateBtn(el); }
+  } else { hideRotateBtn(); }
+}
+
+function showRotateBtn(el) {
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  rotateBtn.style.left = (r.right - 13) + 'px';
+  rotateBtn.style.top  = (r.top   - 13) + 'px';
+  rotateBtn.classList.add('visible');
+}
+function hideRotateBtn() { rotateBtn.classList.remove('visible'); }
+
+rotateBtn.onclick = () => { if (selectedId) rotateRect(selectedId, selectedBoardId); };
+document.getElementById('rotate-selected-btn').onclick = () => {
+  if (selectedId) rotateRect(selectedId, selectedBoardId);
+};
+
+/* ═══════════════════════════════════════════════════════
+   ROTATE
+═══════════════════════════════════════════════════════ */
+function rotateRect(id, boardId) {
+  const board = boards.find(b => b.id === boardId); if (!board) return;
+  const p = board.placed.find(p => p.id === id);    if (!p) return;
+  const nw = p.h, nh = p.w;
+  const nx = Math.min(p.x, artboardW - nw);
+  const ny = Math.min(p.y, artboardH - nh);
+  if (nx < 0 || ny < 0) { showToast('回転後にアートボードからはみ出します'); return; }
+  if (hasCollision({ x: nx, y: ny, w: nw, h: nh }, boardId, id)) {
+    showToast('⚠ 回転後に他の矩形と重なります'); return;
+  }
+  p.w = nw; p.h = nh; p.x = nx; p.y = ny;
+  renderPlacedRect(p, boardId);
+  updateStats();
+  const el = document.getElementById('placed-' + id);
+  if (el) showRotateBtn(el);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -749,210 +817,101 @@ function startListDrag(e, rect) {
   ghostEl.style.height = mmToPx(rect.h) + 'px';
   ghostEl.style.left = (e.clientX - mmToPx(rect.w)/2) + 'px';
   ghostEl.style.top  = (e.clientY - mmToPx(rect.h)/2) + 'px';
-
   listDragState = { rect };
-
   document.addEventListener('mousemove', onListDragMove);
   document.addEventListener('mouseup', onListDragUp);
 }
-
 function onListDragMove(e) {
   if (!listDragState) return;
   const r = listDragState.rect;
   ghostEl.style.left = (e.clientX - mmToPx(r.w)/2) + 'px';
   ghostEl.style.top  = (e.clientY - mmToPx(r.h)/2) + 'px';
 }
-
 function onListDragUp(e) {
   document.removeEventListener('mousemove', onListDragMove);
   document.removeEventListener('mouseup', onListDragUp);
   ghostEl.style.display = 'none';
+  const r = listDragState.rect; listDragState = null;
 
-  const r = listDragState.rect;
-  listDragState = null;
+  // First ensure at least one board exists
+  if (!boards.length) { ensureBoard(nextBoardId); renderAllBoards(); }
 
-  // Check if drop is over artboard
-  const abRect = artboard.getBoundingClientRect();
-  if (e.clientX < abRect.left || e.clientX > abRect.right ||
-      e.clientY < abRect.top  || e.clientY > abRect.bottom) return;
-
-  // Convert screen px → mm
-  let x = pxToMm(e.clientX - abRect.left - mmToPx(r.w)/2);
-  let y = pxToMm(e.clientY - abRect.top  - mmToPx(r.h)/2);
-  x = roundMm(Math.max(0, Math.min(artboardW - r.w, x)));
-  y = roundMm(Math.max(0, Math.min(artboardH - r.h, y)));
-
-  // Snap to corners
-  const snap = snapToCorners({ x, y, w: r.w, h: r.h });
-  if (snap) { x = snap.x; y = snap.y; }
-
-  const candidate = { x, y, w: r.w, h: r.h };
-  if (hasCollision(candidate)) {
-    showToast('⚠ 他の矩形と重なっています。位置を調整してください');
+  for (const board of boards) {
+    const abEl = getBoardEl(board.id); if (!abEl) continue;
+    const abRect = abEl.getBoundingClientRect();
+    if (e.clientX < abRect.left || e.clientX > abRect.right ||
+        e.clientY < abRect.top  || e.clientY > abRect.bottom) continue;
+    let x = roundMm(pxToMm(e.clientX - abRect.left - mmToPx(r.w)/2));
+    let y = roundMm(pxToMm(e.clientY - abRect.top  - mmToPx(r.h)/2));
+    x = Math.max(0, Math.min(artboardW - r.w, x));
+    y = Math.max(0, Math.min(artboardH - r.h, y));
+    const snap = snapToCorners({ x, y, w: r.w, h: r.h }, board.id);
+    if (snap) { x = snap.x; y = snap.y; }
+    if (hasCollision({ x, y, w: r.w, h: r.h }, board.id)) showToast('⚠ 他の矩形と重なっています');
+    const pid = nextPlacedId++;
+    const p = { id: pid, rectId: r.id, groupId: r.groupId, x, y, w: r.w, h: r.h, fill: r.fill, border: r.border, name: r.name };
+    board.placed.push(p);
+    renderPlacedRect(p, board.id);
+    renderSidebar(); updateStats();
+    selectRect(pid, board.id);
+    return;
   }
-
-  const pid = nextPlacedId++;
-  const p = { id: pid, rectId: r.id, groupId: r.groupId, x, y, w: r.w, h: r.h, fill: r.fill, border: r.border, name: r.name };
-  placed.push(p);
-  renderPlacedRect(p);
-  renderSidebar();
-  updateStats();
-  selectRect(pid);
+  showToast('アートボード上にドロップしてください');
 }
 
 /* ═══════════════════════════════════════════════════════
-   RENDER PLACED RECT  (mm → px for screen)
-═══════════════════════════════════════════════════════ */
-function renderPlacedRect(p) {
-  let el = document.getElementById('placed-' + p.id);
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'placed-' + p.id;
-    el.className = 'placed-rect';
-    el.innerHTML = `<span class="rect-label">${p.name}</span>`;
-    artboard.appendChild(el);
-    el.addEventListener('mousedown', e => startBoardDrag(e, p.id));
-  }
-  el.style.left       = mmToPx(p.x) + 'px';
-  el.style.top        = mmToPx(p.y) + 'px';
-  el.style.width      = mmToPx(p.w) + 'px';
-  el.style.height     = mmToPx(p.h) + 'px';
-  el.style.background = p.fill;
-  el.style.borderColor = p.border;
-  el.style.transform  = '';
-}
-
-function removePlacedEl(id) {
-  const el = document.getElementById('placed-' + id);
-  if (el) el.remove();
-}
-
-/* ═══════════════════════════════════════════════════════
-   SELECT
-═══════════════════════════════════════════════════════ */
-function selectRect(id) {
-  // deselect old
-  if (selectedId) {
-    const old = document.getElementById('placed-' + selectedId);
-    if (old) old.classList.remove('selected');
-  }
-  selectedId = id;
-  if (id) {
-    const el = document.getElementById('placed-' + id);
-    if (el) el.classList.add('selected');
-    showRotateBtn(el);
-  } else {
-    hideRotateBtn();
-  }
-}
-
-artboard.addEventListener('mousedown', e => {
-  if (e.target === artboard) {
-    selectRect(null);
-  }
-});
-
-/* ═══════════════════════════════════════════════════════
-   ROTATE
-═══════════════════════════════════════════════════════ */
-function rotateRect(id) {
-  const p = placed.find(p => p.id === id);
-  if (!p) return;
-  // Swap w and h, adjust position to keep top-left
-  const newW = p.h, newH = p.w;
-  const newX = p.x, newY = p.y;
-
-  // Check bounds after rotation
-  if (newX + newW > artboardW || newY + newH > artboardH) {
-    // try to adjust
-    const adjX = Math.min(newX, artboardW - newW);
-    const adjY = Math.min(newY, artboardH - newH);
-    if (adjX < 0 || adjY < 0) { showToast('回転後にアートボードからはみ出します'); return; }
-    p.x = Math.max(0, adjX); p.y = Math.max(0, adjY);
-  }
-
-  const candidate = { x: p.x, y: p.y, w: newW, h: newH };
-  if (hasCollision(candidate, id)) {
-    showToast('⚠ 回転後に他の矩形と重なります'); return;
-  }
-
-  p.w = newW; p.h = newH;
-  renderPlacedRect(p);
-  updateStats();
-  const el = document.getElementById('placed-' + id);
-  showRotateBtn(el);
-}
-
-function showRotateBtn(el) {
-  if (!el) return;
-  const rect = el.getBoundingClientRect();
-  rotateBtn.style.left = (rect.right - 16) + 'px';
-  rotateBtn.style.top  = (rect.top - 16) + 'px';
-  rotateBtn.classList.add('visible');
-}
-function hideRotateBtn() {
-  rotateBtn.classList.remove('visible');
-}
-
-rotateBtn.onclick = () => { if (selectedId) rotateRect(selectedId); };
-document.getElementById('rotate-selected-btn').onclick = () => { if (selectedId) rotateRect(selectedId); };
-
-/* ═══════════════════════════════════════════════════════
-   DRAG ON ARTBOARD  (all in mm)
+   DRAG ON ARTBOARD
 ═══════════════════════════════════════════════════════ */
 let boardDragState = null;
 
-function startBoardDrag(e, id) {
+function startBoardDrag(e, id, boardId) {
   e.preventDefault(); e.stopPropagation();
-  selectRect(id);
-  const p = placed.find(p => p.id === id);
-  if (!p) return;
-  const abRect = artboard.getBoundingClientRect();
-  // offset in mm from rect TL to mouse
-  const offsetX = pxToMm(e.clientX - abRect.left) - p.x;
-  const offsetY = pxToMm(e.clientY - abRect.top)  - p.y;
-  boardDragState = { id, offsetX, offsetY, origX: p.x, origY: p.y };
-  const el = document.getElementById('placed-' + id);
-  el.classList.add('dragging');
+  selectRect(id, boardId);
+  const board = boards.find(b => b.id === boardId); if (!board) return;
+  const p = board.placed.find(p => p.id === id);    if (!p) return;
+  const abEl = getBoardEl(boardId);
+  const abRect = abEl.getBoundingClientRect();
+  boardDragState = {
+    id, boardId,
+    offsetX: pxToMm(e.clientX - abRect.left) - p.x,
+    offsetY: pxToMm(e.clientY - abRect.top)  - p.y,
+    origX: p.x, origY: p.y
+  };
+  document.getElementById('placed-' + id).classList.add('dragging');
   hideRotateBtn();
   document.addEventListener('mousemove', onBoardDragMove);
-  document.addEventListener('mouseup', onBoardDragUp);
+  document.addEventListener('mouseup',   onBoardDragUp);
 }
-
 function onBoardDragMove(e) {
   if (!boardDragState) return;
-  const { id, offsetX, offsetY } = boardDragState;
-  const p = placed.find(p => p.id === id);
-  if (!p) return;
-  const abRect = artboard.getBoundingClientRect();
-
+  const { id, boardId, offsetX, offsetY } = boardDragState;
+  const board = boards.find(b => b.id === boardId); if (!board) return;
+  const p = board.placed.find(p => p.id === id);    if (!p) return;
+  const abEl = getBoardEl(boardId);
+  const abRect = abEl.getBoundingClientRect();
   let x = roundMm(pxToMm(e.clientX - abRect.left) - offsetX);
   let y = roundMm(pxToMm(e.clientY - abRect.top)  - offsetY);
   x = Math.max(0, Math.min(artboardW - p.w, x));
   y = Math.max(0, Math.min(artboardH - p.h, y));
-
-  const snap = snapToCorners({ x, y, w: p.w, h: p.h }, id);
+  const snap = snapToCorners({ x, y, w: p.w, h: p.h }, boardId, id);
   if (snap) { x = snap.x; y = snap.y; }
-
   p.x = x; p.y = y;
   const el = document.getElementById('placed-' + id);
   el.style.left = mmToPx(x) + 'px';
   el.style.top  = mmToPx(y) + 'px';
-
-  const collision = hasCollision({ x, y, w: p.w, h: p.h }, id);
-  el.classList.toggle('collision', collision);
+  el.classList.toggle('collision', hasCollision({ x, y, w: p.w, h: p.h }, boardId, id));
 }
-
-function onBoardDragUp(e) {
+function onBoardDragUp() {
   document.removeEventListener('mousemove', onBoardDragMove);
-  document.removeEventListener('mouseup', onBoardDragUp);
+  document.removeEventListener('mouseup',   onBoardDragUp);
   if (!boardDragState) return;
-  const { id } = boardDragState;
-  const p = placed.find(p => p.id === id);
+  const { id, boardId } = boardDragState;
+  const board = boards.find(b => b.id === boardId);
+  const p = board && board.placed.find(p => p.id === id);
   const el = document.getElementById('placed-' + id);
   if (el) {
     el.classList.remove('dragging', 'collision');
-    if (p && hasCollision({ x: p.x, y: p.y, w: p.w, h: p.h }, id)) {
+    if (p && hasCollision({ x: p.x, y: p.y, w: p.w, h: p.h }, boardId, id)) {
       p.x = boardDragState.origX; p.y = boardDragState.origY;
       el.style.left = mmToPx(p.x) + 'px';
       el.style.top  = mmToPx(p.y) + 'px';
@@ -964,25 +923,147 @@ function onBoardDragUp(e) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   AUTO PLACE ENGINE
+   ─ CSV順に優先（csvGroups[0]が最優先）
+   ─ 各グループ内は面積降順
+   ─ Skyline BL アルゴリズムで左上詰め
+   ─ グループ間はY境界でスパッと切り、下に継続配置
+   ─ アートボードに入りきらない場合は次ページ
+═══════════════════════════════════════════════════════ */
+document.getElementById('auto-place-btn').onclick = autoPlace;
+
+function autoPlace() {
+  if (!rects.length) { showToast('CSVを読み込んでください'); return; }
+
+  // Clear existing placed
+  allPlaced().forEach(p => removePlacedEl(p.id));
+  boards = [];
+  nextPlacedId = 1;
+  nextBoardId  = 1;
+
+  // Sort each group by area desc
+  const groups = csvGroups.map(grp => ({
+    grp,
+    items: rects
+      .filter(r => r.groupId === grp.id)
+      .map(r => ({ ...r }))
+      .sort((a, b) => (b.w * b.h) - (a.w * a.h))
+  }));
+
+  let boardId = nextBoardId++;
+  ensureBoard(boardId);
+  let groupBoundaryY = 0; // Y以下にCSV2以降を配置
+
+  for (let gi = 0; gi < groups.length; gi++) {
+    const { items } = groups[gi];
+    const startY = gi === 0 ? 0 : groupBoundaryY;
+
+    for (const item of items) {
+      // Try to place on current or subsequent boards
+      let placed = false;
+      for (let bi = boards.findIndex(b => b.id === boardId); bi < boards.length + 10; bi++) {
+        // extend boards array if needed
+        while (bi >= boards.length) {
+          boardId = nextBoardId++;
+          ensureBoard(boardId);
+        }
+        const board = boards[bi];
+        const sy = gi === 0 ? 0 : (board.id === boards.find(b => b.id === boardId)?.id ? startY : 0);
+        const pos = findPosition(item, board.placed, sy);
+        if (pos) {
+          const pid = nextPlacedId++;
+          const p = { id: pid, rectId: item.id, groupId: item.groupId,
+                      x: pos.x, y: pos.y, w: item.w, h: item.h,
+                      fill: item.fill, border: item.border, name: item.name };
+          board.placed.push(p);
+          placed = true;
+          // Update current boardId pointer to this board
+          boardId = board.id;
+          break;
+        }
+        // Move to next board
+        boardId = boards[bi + 1]?.id ?? nextBoardId;
+      }
+      if (!placed) showToast(`⚠ "${item.name}" を配置できませんでした`);
+    }
+
+    // After placing CSV group 0: record max Y as boundary for next group
+    if (gi === 0) {
+      const ps = boards.flatMap(b => b.placed).filter(p => p.groupId === groups[0].grp.id);
+      groupBoundaryY = ps.length ? Math.max(...ps.map(p => p.y + p.h)) : 0;
+      // reset to first board for next group, place below boundary
+      boardId = boards[0].id;
+    }
+  }
+
+  renderAllBoards();
+  renderSidebar();
+  updateStats();
+  const total = boards.reduce((s, b) => s + b.placed.length, 0);
+  showToast(`⚡ 自動配置完了 — ${total}個を${boards.length}ページに配置`);
+}
+
+/* Skyline Bottom-Left position finder
+   placed: 既存配置済み矩形[], startY: この矩形以上のY位置に配置
+   returns {x, y} or null */
+function findPosition(item, placed, startY = 0) {
+  const W = artboardW, H = artboardH;
+  // Build skyline: array of {x, y, w} segments
+  // Try every possible position on a grid of candidate Ys
+  const candidateYs = new Set([startY]);
+  const candidateXs = new Set([0]);
+  for (const p of placed) {
+    if (p.y + p.h > startY) candidateYs.add(p.y + p.h);
+    candidateXs.add(p.x + p.w);
+    candidateYs.add(p.y);
+  }
+
+  // BL: scan candidate positions bottom-left first
+  const ys = [...candidateYs].filter(y => y >= startY).sort((a, b) => a - b);
+  const xs = [...candidateXs].sort((a, b) => a - b);
+
+  for (const y of ys) {
+    for (const x of xs) {
+      if (x + item.w > W || y + item.h > H) continue;
+      const cand = { x, y, w: item.w, h: item.h };
+      if (!placed.some(p => rectsOverlap(cand, p))) {
+        return { x, y };
+      }
+    }
+    // Also try x=0
+    const cand0 = { x: 0, y, w: item.w, h: item.h };
+    if (item.w <= W && y + item.h <= H && !placed.some(p => rectsOverlap(cand0, p))) {
+      return { x: 0, y };
+    }
+  }
+
+  // Final sweep: try every (x=0..W, y=startY..H) at 1mm granularity if above failed
+  for (let y = startY; y <= H - item.h; y += 1) {
+    for (let x = 0; x <= W - item.w; x += 1) {
+      const cand = { x, y, w: item.w, h: item.h };
+      if (!placed.some(p => rectsOverlap(cand, p))) return { x, y };
+    }
+  }
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════
    CLEAR
 ═══════════════════════════════════════════════════════ */
 document.getElementById('clear-btn').onclick = () => {
-  if (!placed.length && !rects.length && !csvGroups.length) return;
-  placed.forEach(p => removePlacedEl(p.id));
-  placed = [];
-  rects = [];
-  csvGroups = [];
-  groupPaletteIdx = 0;
-  selectedId = null;
+  allPlaced().forEach(p => removePlacedEl(p.id));
+  boards = []; rects = []; csvGroups = [];
+  groupPaletteIdx = 0; nextBoardId = 1; nextPlacedId = 1;
+  selectedId = null; selectedBoardId = null;
   hideRotateBtn();
+  renderAllBoards();
   renderSidebar();
   updateStats();
-  emptyHint.style.display = 'flex';
   showToast('クリアしました');
 };
 
 /* ═══════════════════════════════════════════════════════
-   EXPORT  (internal unit is mm; convert if needed)
+   EXPORT  (all boards as separate SVG artboards)
 ═══════════════════════════════════════════════════════ */
 document.getElementById('export-btn').onclick = () => {
   document.getElementById('export-modal').classList.add('open');
@@ -1000,8 +1081,8 @@ document.getElementById('do-export').onclick = () => {
 
 function convertUnit(mm, unit) {
   if (unit === 'mm') return +mm.toFixed(4);
-  if (unit === 'pt') return +(mm * 2.8346).toFixed(4);  // 1mm = 2.8346pt
-  if (unit === 'px') return +(mm / 0.2646).toFixed(4);  // 1mm = 3.7795px
+  if (unit === 'pt') return +(mm * 2.8346).toFixed(4);
+  if (unit === 'px') return +(mm / 0.2646).toFixed(4);
   return mm;
 }
 
@@ -1010,57 +1091,48 @@ function exportFile(name, fmt, unit) {
   const ah = convertUnit(artboardH, unit);
   const u = unit;
 
-  // Group placed rects by csvGroup for layered output
-  const groupedSvg = csvGroups.map(grp => {
-    const gPlaced = placed.filter(p => p.groupId === grp.id);
-    if (!gPlaced.length) return '';
-    const groupRects = gPlaced.map(p => {
-      const x = convertUnit(p.x, unit);
-      const y = convertUnit(p.y, unit);
-      const w = convertUnit(p.w, unit);
-      const h = convertUnit(p.h, unit);
-      const label = p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      const fontSize = convertUnit(3.5, unit);
-      return `    <rect x="${x}${u}" y="${y}${u}" width="${w}${u}" height="${h}${u}" fill="${p.fill}" stroke="${p.border}" stroke-width="0.3${u}"/>
-    <text x="${(x+w/2).toFixed(4)}${u}" y="${(y+h/2).toFixed(4)}${u}" font-family="monospace" font-size="${fontSize}${u}" fill="${p.border}" text-anchor="middle" dominant-baseline="middle">${label}</text>`;
+  // Each board becomes one SVG file
+  boards.forEach((board, idx) => {
+    const groupedSvg = csvGroups.map(grp => {
+      const gp = board.placed.filter(p => p.groupId === grp.id);
+      if (!gp.length) return '';
+      const rects = gp.map(p => {
+        const x = convertUnit(p.x, unit), y = convertUnit(p.y, unit);
+        const w = convertUnit(p.w, unit), h = convertUnit(p.h, unit);
+        const label = p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const fs = convertUnit(3.5, unit);
+        return `    <rect x="${x}${u}" y="${y}${u}" width="${w}${u}" height="${h}${u}" fill="${p.fill}" stroke="${p.border}" stroke-width="0.3${u}"/>
+    <text x="${(x+w/2).toFixed(3)}${u}" y="${(y+h/2).toFixed(3)}${u}" font-family="monospace" font-size="${fs}${u}" fill="${p.border}" text-anchor="middle" dominant-baseline="middle">${label}</text>`;
+      }).join('\n');
+      return `  <g id="${grp.fileName}">\n${rects}\n  </g>`;
     }).join('\n');
-    return `  <g id="csv-${grp.id}" inkscape:label="${grp.fileName}">\n${groupRects}\n  </g>`;
-  }).join('\n');
 
-  let svg = '';
-  if (fmt === 'ai') {
-    svg = `<?xml version="1.0" encoding="utf-8"?>
-<!-- Adobe Illustrator compatible SVG — unit: ${u} -->
+    const suffix = boards.length > 1 ? `_p${idx + 1}` : '';
+    let svg = fmt === 'ai'
+      ? `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1"
-  xmlns="http://www.w3.org/2000/svg"
-  xmlns:xlink="http://www.w3.org/1999/xlink"
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg"
   xmlns:i="http://ns.adobe.com/AdobeIllustrator/10.0/"
-  x="0${u}" y="0${u}" width="${aw}${u}" height="${ah}${u}"
-  viewBox="0 0 ${aw} ${ah}"
-  xml:space="preserve">
-<defs/>
+  x="0${u}" y="0${u}" width="${aw}${u}" height="${ah}${u}" viewBox="0 0 ${aw} ${ah}" xml:space="preserve">
+<rect width="${aw}${u}" height="${ah}${u}" fill="white"/>
+${groupedSvg}
+</svg>`
+      : `<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${aw}${u}" height="${ah}${u}" viewBox="0 0 ${aw} ${ah}">
 <rect width="${aw}${u}" height="${ah}${u}" fill="white"/>
 ${groupedSvg}
 </svg>`;
-  } else {
-    svg = `<?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-  width="${aw}${u}" height="${ah}${u}" viewBox="0 0 ${aw} ${ah}">
-<rect width="${aw}${u}" height="${ah}${u}" fill="white"/>
-${groupedSvg}
-</svg>`;
-  }
 
-  const ext = fmt === 'ai' ? 'ai' : 'svg';
-  const blob = new Blob([svg], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `${name}.${ext}`;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast(`${name}.${ext} をダウンロードしました`);
+    const ext = fmt === 'ai' ? 'ai' : 'svg';
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${name}${suffix}.${ext}`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+  showToast(`${boards.length}ファイルをダウンロードしました`);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1079,22 +1151,19 @@ function showToast(msg) {
    KEYBOARD
 ═══════════════════════════════════════════════════════ */
 document.addEventListener('keydown', e => {
-  if (e.key === 'r' || e.key === 'R') {
-    if (selectedId) rotateRect(selectedId);
+  if ((e.key === 'r' || e.key === 'R') && selectedId) {
+    rotateRect(selectedId, selectedBoardId);
   }
-  if (e.key === 'Delete' || e.key === 'Backspace') {
-    if (selectedId && document.activeElement.tagName !== 'INPUT') {
-      placed = placed.filter(p => {
-        if (p.id === selectedId) { removePlacedEl(p.id); return false; }
-        return true;
-      });
-      selectedId = null;
-      hideRotateBtn();
-      renderSidebar();
-      updateStats();
+  if ((e.key === 'Delete' || e.key === 'Backspace') &&
+       selectedId && document.activeElement.tagName !== 'INPUT') {
+    for (const board of boards) {
+      const idx = board.placed.findIndex(p => p.id === selectedId);
+      if (idx !== -1) { removePlacedEl(board.placed[idx].id); board.placed.splice(idx, 1); break; }
     }
+    selectedId = null; selectedBoardId = null;
+    hideRotateBtn(); renderSidebar(); updateStats();
   }
-  if (e.key === 'Escape') selectRect(null);
+  if (e.key === 'Escape') selectRect(null, null);
 });
 
 /* ═══════════════════════════════════════════════════════
@@ -1123,9 +1192,9 @@ document.addEventListener('keydown', e => {
 
   loadCsvText(csv1, '02622867.csv');
   loadCsvText(csv2, '02623522.csv');
+  renderAllBoards();
   renderSidebar();
   updateStats();
-  emptyHint.style.display = 'none';
 })();
 
 /* ═══════════════════════════════════════════════════════
