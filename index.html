@@ -205,7 +205,10 @@ function renderBoards(){
   // 常に最低2枚確保
   if(boards.length===0){eb(1);eb(2);nextBoardId=3}
   else if(boards.length===1){const nid=nextBoardId++;eb(nid)}
-  boards.forEach((board,idx)=>{
+  // 矩形が1つも配置されていないボードはスキップ
+  const filledBoards=boards.filter(b=>b.placed.length>0);
+  if(!filledBoards.length){toast('配置済みの矩形がありません');return}
+  filledBoards.forEach((board,idx)=>{
     const c=document.createElement('div');c.className='board-container';
     c.innerHTML='<div class="board-label">アートボード '+(idx+1)+(boards.length>1?' <span style="font-size:7px;opacity:.5">← →ドラッグで移動可</span>':'')+'</div><div style="position:relative;flex-shrink:0"><div class="artboard" id="ab-'+board.id+'" style="width:'+wPx+'px;height:'+hPx+'px"></div></div>';
     bw.appendChild(c);
@@ -430,34 +433,36 @@ function hidRot(){rotBtn.classList.remove('visible')}
 
 let rbSt=null;
 function abMD(e,bid){
-  if(e.target!==gbe(bid))return;
+  // placed-rect上のクリックは無視（rectMDが処理する）
+  if(e.target.classList.contains('placed-rect')||e.target.classList.contains('rect-label'))return;
   if(!e.shiftKey)clrSel();
-  rbSt={sx:e.clientX,sy:e.clientY,bid,ar:gbe(bid).getBoundingClientRect()};
+  // 開始時のAR保存
+  const ar=gbe(bid).getBoundingClientRect();
+  rbSt={sx:e.clientX,sy:e.clientY,bid,ar};
   document.addEventListener('mousemove',rbMv);document.addEventListener('mouseup',rbUp);
 }
 function rbMv(e){
   if(!rbSt)return;
   const x=Math.min(rbSt.sx,e.clientX),y=Math.min(rbSt.sy,e.clientY);
-  rb.style.cssText='display:block;left:'+x+'px;top:'+y+'px;width:'+Math.abs(e.clientX-rbSt.sx)+'px;height:'+Math.abs(e.clientY-rbSt.sy)+'px';
+  rb.style.cssText='display:block;left:'+x+'px;top:'+y+'px;width:'+Math.abs(e.clientX-rbSt.sx)+'px;height:'+Math.abs(e.clientY-rbSt.sy)+'px;position:fixed;';
 }
 function rbUp(e){
   document.removeEventListener('mousemove',rbMv);document.removeEventListener('mouseup',rbUp);
   rb.style.display='none';if(!rbSt)return;
-  const{sx,sy,bid}=rbSt;rbSt=null;
-  // arをここで再取得（スクロール等でズレを防ぐ）
+  const{sx,sy,bid,ar}=rbSt;rbSt=null;
+  // mouseup時にARを再取得してより正確に
   const ae=gbe(bid);if(!ae)return;
-  const ar=ae.getBoundingClientRect();
-  // ラバーバンド範囲をアートボード座標（px）に変換
-  const rx1=Math.min(sx,e.clientX)-ar.left;
-  const ry1=Math.min(sy,e.clientY)-ar.top;
-  const rx2=Math.max(sx,e.clientX)-ar.left;
-  const ry2=Math.max(sy,e.clientY)-ar.top;
-  if(rx2-rx1<4&&ry2-ry1<4)return;
-  // 矩形が完全にラバーバンド内に入っている場合のみ選択
-  const hit=gp(bid).filter(p=>{
-    const px1=mp(p.x),py1=mp(p.y),px2=mp(p.x+p.w),py2=mp(p.y+p.h);
-    return px1>=rx1&&py1>=ry1&&px2<=rx2&&py2<=ry2;
-  });
+  const ar2=ae.getBoundingClientRect();
+  // ラバーバンド範囲をアートボード座標（mm）に変換
+  const rx1mm=pm(Math.min(sx,e.clientX)-ar2.left);
+  const ry1mm=pm(Math.min(sy,e.clientY)-ar2.top);
+  const rx2mm=pm(Math.max(sx,e.clientX)-ar2.left);
+  const ry2mm=pm(Math.max(sy,e.clientY)-ar2.top);
+  if(rx2mm-rx1mm<1&&ry2mm-ry1mm<1)return; // 1mm未満は無視
+  // mm座標で矩形が完全に囲まれているか判定
+  const hit=gp(bid).filter(p=>
+    p.x>=rx1mm&&p.y>=ry1mm&&(p.x+p.w)<=rx2mm&&(p.y+p.h)<=ry2mm
+  );
   if(hit.length)setSel(hit.map(p=>p.id),bid);
 }
 
@@ -597,15 +602,68 @@ function drUp(){
 }
 
 function rotOne(id,bid){
+  // 単体回転（単独選択時 or BBox回転の内部処理）
   const board=boards.find(b=>b.id===bid);if(!board)return;
   const p=board.placed.find(p=>p.id===id);if(!p)return;
   const nw=p.h,nh=p.w,nx=Math.min(p.x,artboardW-nw),ny=Math.min(p.y,artboardH-nh);
   if(nx<0||ny<0){toast('回転後はみ出します');return}
   if(hasC({x:nx,y:ny,w:nw,h:nh},bid,[id])){toast('回転後に重なります');return}
-  p.w=nw;p.h=nh;p.x=nx;p.y=ny;rr(p,bid);updateStats();
-  if(selIds.size===1&&selIds.has(id)){const el=document.getElementById('pr-'+id);if(el)showRot(el)}
+  p.w=nw;p.h=nh;p.x=nx;p.y=ny;rr(p,bid);
 }
-function rotSel(){if(selBid)[...selIds].forEach(id=>rotOne(id,selBid))}
+
+function rotSel(){
+  if(!selBid||!selIds.size)return;
+  if(selIds.size===1){
+    // 単体: 従来どおり
+    rotOne([...selIds][0],selBid);
+    updateStats();
+    const el=document.getElementById('pr-'+[...selIds][0]);if(el)showRot(el);
+    return;
+  }
+  // 複数: BBox全体を90°右回転
+  // BBox中心を軸に、各矩形の位置をBBox内での相対座標から回転させる
+  const board=boards.find(b=>b.id===selBid);if(!board)return;
+  const ps=board.placed.filter(p=>selIds.has(p.id));if(!ps.length)return;
+
+  const minX=Math.min(...ps.map(p=>p.x));
+  const minY=Math.min(...ps.map(p=>p.y));
+  const maxX=Math.max(...ps.map(p=>p.x+p.w));
+  const maxY=Math.max(...ps.map(p=>p.y+p.h));
+  const bboxW=maxX-minX, bboxH=maxY-minY;
+
+  // 90°右回転後の新BBoxサイズ = bboxH×bboxW（縦横が入れ替わる）
+  // 各矩形の回転後位置:
+  //   新x = minX + (旧y - minY)            ← BBox内でのy位置がxになる
+  //   新y = minY + (bboxW - (旧x - minX) - 旧w)  ← BBox内でのx位置が反転してyになる
+  //   新w = 旧h, 新h = 旧w
+  const newPositions=ps.map(p=>({
+    id:p.id,
+    nx: roundMm(minX+(p.y-minY)),
+    ny: roundMm(minY+(bboxW-(p.x-minX)-p.w)),
+    nw: p.h, nh: p.w
+  }));
+
+  // 境界チェック
+  for(const np of newPositions){
+    if(np.nx<0||np.ny<0||np.nx+np.nw>artboardW||np.ny+np.nh>artboardH){
+      toast('回転後にアートボードからはみ出します');return;
+    }
+  }
+  // 衝突チェック（選択外のみ）
+  for(const np of newPositions){
+    if(hasC({x:np.nx,y:np.ny,w:np.nw,h:np.nh},selBid,[...selIds])){
+      toast('回転後に他の矩形と重なります');return;
+    }
+  }
+  // 適用
+  newPositions.forEach(np=>{
+    const p=board.placed.find(p=>p.id===np.id);if(!p)return;
+    p.x=np.nx;p.y=np.ny;p.w=np.nw;p.h=np.nh;
+    rr(p,selBid);
+  });
+  updateStats();
+  toast('BBox回転しました');
+}
 
 /* リフレクト: axis='h'(左右) or 'v'(上下)
    選択矩形群をまとめたBBoxの中心を軸に鏡面反転 */
@@ -966,7 +1024,15 @@ document.getElementById('clear-btn').onclick=()=>{
   renderBoards();renderSidebar();updateStats();toast('クリアしました');
 };
 
-document.getElementById('export-btn').onclick=()=>document.getElementById('export-modal').classList.add('open');
+document.getElementById('export-btn').onclick=()=>{
+  // デフォルトファイル名を「アートボード+年月日時刻」に設定
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const ts=now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())
+    +'_'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds());
+  document.getElementById('export-name').value='アートボード_'+ts;
+  document.getElementById('export-modal').classList.add('open');
+};
 document.getElementById('cancel-export').onclick=()=>document.getElementById('export-modal').classList.remove('open');
 document.getElementById('do-export').onclick=()=>{
   expFile(document.getElementById('export-name').value||'artboard',document.getElementById('export-fmt').value,document.getElementById('export-unit').value);
@@ -996,7 +1062,7 @@ function expFile(name,fmt,unit){
     const a=document.createElement('a');a.href=url;a.download=name+sfx+'.'+ext;
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   });
-  toast(boards.length+'ファイルをダウンロード');
+  toast(filledBoards.length+'ファイルをダウンロード');
 }
 
 let tt;
