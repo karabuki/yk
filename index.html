@@ -205,10 +205,7 @@ function renderBoards(){
   // 常に最低2枚確保
   if(boards.length===0){eb(1);eb(2);nextBoardId=3}
   else if(boards.length===1){const nid=nextBoardId++;eb(nid)}
-  // 矩形が1つも配置されていないボードはスキップ
-  const filledBoards=boards.filter(b=>b.placed.length>0);
-  if(!filledBoards.length){toast('配置済みの矩形がありません');return}
-  filledBoards.forEach((board,idx)=>{
+  boards.forEach((board,idx)=>{
     const c=document.createElement('div');c.className='board-container';
     c.innerHTML='<div class="board-label">アートボード '+(idx+1)+(boards.length>1?' <span style="font-size:7px;opacity:.5">← →ドラッグで移動可</span>':'')+'</div><div style="position:relative;flex-shrink:0"><div class="artboard" id="ab-'+board.id+'" style="width:'+wPx+'px;height:'+hPx+'px"></div></div>';
     bw.appendChild(c);
