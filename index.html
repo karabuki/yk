@@ -7,7 +7,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0f0e11;--surface:#1a1820;--surface2:#231f2e;--border:#332d42;--accent:#c8ff57;--text:#e8e4f0;--muted:#7a7488;--danger:#ff5757}
+:root{--bg:#333333;--surface:#1a1820;--surface2:#231f2e;--border:#332d42;--accent:#c8ff57;--text:#e8e4f0;--muted:#7a7488;--danger:#ff5757}
 html,body{height:100%;width:100%;font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);overflow:hidden}
 #app{display:flex;height:100vh;width:100vw}
 #sidebar{width:210px;min-width:210px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
@@ -46,14 +46,14 @@ html,body{height:100%;width:100%;font-family:'DM Mono',monospace;background:var(
 .btn.danger:hover{border-color:var(--danger);color:var(--danger)}
 .btn.purple{background:#2a2538;border-color:#7b5ea7;color:#c8b8ff;font-weight:600}
 .btn.purple:hover{background:#3a3550}
-#canvas-area{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;min-width:0}
+#canvas-area{flex:1;display:flex;flex-direction:column;background:#cccccc;overflow:hidden;min-width:0}
 #toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 10px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
 .tbar-label{font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;white-space:nowrap}
 .tbar-unit{font-size:8px;color:var(--muted)}
 #toolbar input[type=number]{width:58px;padding:3px 5px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'DM Mono',monospace;font-size:10px}
 #toolbar input[type=number]:focus{outline:none;border-color:var(--accent)}
 .sep{width:1px;height:14px;background:var(--border);margin:0 2px}
-#viewport{flex:1;overflow:auto;position:relative;display:flex;align-items:flex-start;justify-content:center;padding:20px 0}
+#viewport{flex:1;overflow:auto;position:relative;display:flex;align-items:flex-start;justify-content:center;padding:20px 0;background:#cccccc}
 #viewport::-webkit-scrollbar{width:5px;height:5px}
 #viewport::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 #boards-wrap{display:flex;flex-direction:column;align-items:center;gap:32px;padding:12px 32px 32px}
@@ -118,7 +118,7 @@ html,body{height:100%;width:100%;font-family:'DM Mono',monospace;background:var(
       <button class="btn" id="apply-ab-btn" style="padding:3px 8px">適用</button>
       <div class="sep"></div>
       <span class="tbar-label">SNAP</span>
-      <input type="number" id="snap-dist" value="5" min="0" max="50" step="0.5" style="width:44px">
+      <input type="number" id="snap-dist" value="20" min="0" max="50" step="0.5" style="width:44px">
       <span class="tbar-unit">mm</span>
       <div class="sep"></div>
       <button class="btn" id="rotate-selected-btn" style="padding:3px 8px">&#8635; 回転</button>
@@ -151,7 +151,7 @@ function roundMm(v,d=2){return Math.round(v*10**d)/10**d}
 let csvGroups=[],rects=[],boards=[];
 let nextBoardId=1,nextPlacedId=1,nextGroupId=1;
 let selIds=new Set(),selBid=null;
-let artboardW=1088,artboardH=738,snapDist=5;
+let artboardW=1088,artboardH=738,snapDist=20;
 const PAL=[
   {fill:'#ffc2c2',border:'#c03030'},{fill:'#b8d4ff',border:'#2a60c0'},
   {fill:'#b8f5c0',border:'#208a38'},{fill:'#fff0a0',border:'#b08000'},
