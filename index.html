@@ -248,7 +248,9 @@ function renderSidebar(){
     const hdr=document.createElement('div');
     hdr.className='group-header';hdr.style.borderColor=grp.border;
     hdr.draggable=true;hdr.dataset.gid=grp.id;
-    hdr.innerHTML='<span class="group-drag-handle">&#8942;&#8942;</span><div class="group-dot" style="background:'+grp.fill+';border-color:'+grp.border+'"></div><span class="group-name" style="color:'+grp.border+'">'+lbl+'</span><span class="group-count">'+pc+'/'+gr.length+'</span>';
+    hdr.innerHTML='<span class="group-drag-handle">&#8942;&#8942;</span><div class="group-dot" style="background:'+grp.fill+';border-color:'+grp.border+'"></div><span class="group-name" style="color:'+grp.border+'">'+lbl+'</span><span class="group-count">'+pc+'/'+gr.length+'</span><button class="grp-auto-btn" data-gid="'+grp.id+'" title="このCSVのみ自動配置" style="margin-left:auto;flex-shrink:0;background:none;border:1px solid '+grp.border+'55;border-radius:3px;color:'+grp.border+';font-size:8px;padding:1px 5px;cursor:pointer;line-height:1.4">&#9889;</button>';
+    // ⚡ボタンのクリック（ヘッダーのdragstartが発火しないよう stopPropagation）
+    hdr.querySelector('.grp-auto-btn').addEventListener('click',e=>{e.stopPropagation();autoPlaceGroup(parseInt(e.currentTarget.dataset.gid))});
     hdr.addEventListener('dragstart',e=>{dgid=parseInt(e.currentTarget.dataset.gid);e.dataTransfer.effectAllowed='move'});
     hdr.addEventListener('dragover',e=>{e.preventDefault();e.currentTarget.classList.add('drag-over')});
     hdr.addEventListener('dragleave',e=>e.currentTarget.classList.remove('drag-over'));
@@ -690,6 +692,72 @@ document.getElementById('auto-place-btn').onclick=autoPlace;
    ④ 1枚目に入らなければ2枚目へ（禁止ゾーンなし）
    ⑤ 常に最低2枚確保
 ══════════════════════════════════════════════════ */
+/* ─── 単一グループ自動配置 ───
+   対象グループの配置済み矩形を一度引っ込め、
+   他グループのBBoxを禁止ゾーンとして回避しながら最適配置する */
+function autoPlaceGroup(gid){
+  const grp=csvGroups.find(g=>g.id===gid);
+  if(!grp){toast('グループが見つかりません');return}
+
+  // ボードがなければ2枚作成
+  if(boards.length===0){eb(1);eb(2);nextBoardId=3;renderBoards()}
+
+  // 対象グループの配置済み矩形を引っ込める
+  for(const board of boards){
+    const toRemove=board.placed.filter(p=>p.groupId===gid);
+    toRemove.forEach(p=>{rmEl(p.id);board.placed=board.placed.filter(pp=>pp.id!==p.id)});
+  }
+
+  // 配置対象アイテム（面積降順）
+  const items=rects
+    .filter(r=>r.groupId===gid)
+    .map(r=>({...r}))
+    .sort((a,b)=>b.w*b.h-a.w*a.h);
+
+  // 禁止ゾーン: 他グループのBBox（ボードごと）
+  const forbiddenZones={};
+  for(const board of boards){
+    const otherPlaced=board.placed.filter(p=>p.groupId!==gid);
+    if(!otherPlaced.length)continue;
+    // グループごとにBBoxを計算
+    const otherGids=[...new Set(otherPlaced.map(p=>p.groupId))];
+    otherGids.forEach(ogid=>{
+      const ps=otherPlaced.filter(p=>p.groupId===ogid);
+      const bx1=Math.min(...ps.map(p=>p.x));
+      const by1=Math.min(...ps.map(p=>p.y));
+      const bx2=Math.max(...ps.map(p=>p.x+p.w));
+      const by2=Math.max(...ps.map(p=>p.y+p.h));
+      if(!forbiddenZones[board.id])forbiddenZones[board.id]=[];
+      forbiddenZones[board.id].push({x:bx1,y:by1,w:bx2-bx1,h:by2-by1});
+    });
+  }
+
+  let placed=0,failed=[];
+  for(const item of items){
+    let done=false;
+    // 既存ボードに順番に試みる
+    for(let bi=0;bi<boards.length&&!done;bi++){
+      const board=boards[bi];
+      const fz=forbiddenZones[board.id]||[];
+      const pos=findPosWithForbidden(item,board.placed,fz);
+      if(pos){
+        const pid=nextPlacedId++;
+        board.placed.push({id:pid,rectId:item.id,groupId:item.groupId,
+          x:pos.x,y:pos.y,w:item.w,h:item.h,
+          fill:item.fill,border:item.border,name:item.name});
+        rr({id:pid,rectId:item.id,groupId:item.groupId,x:pos.x,y:pos.y,
+          w:item.w,h:item.h,fill:item.fill,border:item.border,name:item.name},board.id);
+        placed++;done=true;
+      }
+    }
+    if(!done)failed.push(item.name);
+  }
+
+  clrSel();renderSidebar();updateStats();
+  if(failed.length)toast('⚠ 配置不可: '+failed.join(', '));
+  else toast('⚡ '+grp.fileName.match(/\d{8}/)?.[0]||grp.fileName+' — '+placed+'個を自動配置');
+}
+
 function autoPlace(){
   if(!rects.length){toast('CSVを読み込んでください');return}
   ap().forEach(p=>rmEl(p.id));boards=[];nextPlacedId=1;nextBoardId=1;clrSel();
