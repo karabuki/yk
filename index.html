@@ -103,7 +103,7 @@ html,body{height:100%;width:100%;font-family:'DM Mono',monospace;background:var(
       <input type="file" id="csv-input" accept=".csv,text/csv" multiple>
       <div class="btn-row">
         <button class="btn danger" id="clear-btn" style="flex:1">🗑</button>
-        <button class="btn purple" id="auto-place-btn" style="flex:2">⚡ 自動配置</button>
+        <button class="btn purple" id="auto-place-btn" style="flex:2;flex-direction:column;gap:1px;padding:4px 6px"><span>⚡ 自動配置</span><span id="auto-place-pattern" style="font-size:7px;opacity:.7;letter-spacing:.5px">横長</span></button>
         <button class="btn accent" id="export-btn" style="flex:2">↑ 書き出し</button>
       </div>
     </div>
@@ -680,7 +680,26 @@ function ldUp(e){
   toast('配置できる空きがありません');
 }
 
-document.getElementById('auto-place-btn').onclick=autoPlace;
+// ─── 自動配置パターン管理 ───
+const AUTO_PATTERNS = [
+  { id:'wide',   label:'横長',     desc:'横方向優先' },
+  { id:'tall',   label:'縦長',     desc:'縦方向優先' },
+  { id:'square', label:'正方形',   desc:'BBox正方形に近似' },
+  { id:'balance',label:'バランス', desc:'隙間最小化' },
+];
+let autoPatternIdx = 0;
+
+function updatePatternLabel(){
+  const el=document.getElementById('auto-place-pattern');
+  if(el)el.textContent=AUTO_PATTERNS[autoPatternIdx].label+' ('+(autoPatternIdx+1)+'/'+AUTO_PATTERNS.length+')';
+}
+updatePatternLabel();
+
+document.getElementById('auto-place-btn').onclick=()=>{
+  autoPlace(AUTO_PATTERNS[autoPatternIdx].id);
+  autoPatternIdx=(autoPatternIdx+1)%AUTO_PATTERNS.length;
+  updatePatternLabel();
+};
 /* ══════════════════════════════════════════════════
    AUTO PLACE  —  グループ境界厳守アルゴリズム
 
@@ -758,34 +777,50 @@ function autoPlaceGroup(gid){
   else toast('⚡ '+grp.fileName.match(/\d{8}/)?.[0]||grp.fileName+' — '+placed+'個を自動配置');
 }
 
-function autoPlace(){
+/* ══════════════════════════════════════════════════════
+   AUTO PLACE  —  4パターン対応
+   pattern: 'wide' | 'tall' | 'square' | 'balance'
+══════════════════════════════════════════════════════ */
+function autoPlace(pattern='wide'){
   if(!rects.length){toast('CSVを読み込んでください');return}
   ap().forEach(p=>rmEl(p.id));boards=[];nextPlacedId=1;nextBoardId=1;clrSel();
 
   const sgs=[...csvGroups].sort((a,b)=>a.priority-b.priority);
-
-  // ボード0を作成
   eb(nextBoardId++);
 
   for(let gi=0;gi<sgs.length;gi++){
     const grp=sgs[gi];
-    const items=rects
-      .filter(r=>r.groupId===grp.id)
-      .map(r=>({...r}))
-      .sort((a,b)=>b.w*b.h-a.w*a.h);
 
-    // このグループより前のグループのBBox（ボードごと）を禁止ゾーンとして収集
-    // forbiddenZones[boardId] = [{x,y,w,h}, ...]
+    // パターンごとのソート順
+    const rawItems=rects.filter(r=>r.groupId===grp.id).map(r=>({...r}));
+    let items;
+    if(pattern==='wide'){
+      // 横長: 幅が広い順、同幅なら高さ降順
+      items=rawItems.sort((a,b)=>b.w-a.w||b.h-a.h);
+    } else if(pattern==='tall'){
+      // 縦長: 高さが高い順、同高さなら幅降順
+      items=rawItems.sort((a,b)=>b.h-a.h||b.w-a.w);
+    } else if(pattern==='square'){
+      // 正方形: アスペクト比が1:1に近い順（面積大を優先）
+      items=rawItems.sort((a,b)=>{
+        const ra=Math.min(a.w,a.h)/Math.max(a.w,a.h);
+        const rb=Math.min(b.w,b.h)/Math.max(b.w,b.h);
+        return rb-ra||b.w*b.h-a.w*a.h;
+      });
+    } else {
+      // balance: 面積降順（隙間最小化）
+      items=rawItems.sort((a,b)=>b.w*b.h-a.w*a.h);
+    }
+
+    // 禁止ゾーン収集（前グループのBBox）
     const forbiddenZones={};
     for(let pi=0;pi<gi;pi++){
       const prevGrp=sgs[pi];
       for(const board of boards){
         const ps=board.placed.filter(p=>p.groupId===prevGrp.id);
         if(!ps.length)continue;
-        const bx1=Math.min(...ps.map(p=>p.x));
-        const by1=Math.min(...ps.map(p=>p.y));
-        const bx2=Math.max(...ps.map(p=>p.x+p.w));
-        const by2=Math.max(...ps.map(p=>p.y+p.h));
+        const bx1=Math.min(...ps.map(p=>p.x)),by1=Math.min(...ps.map(p=>p.y));
+        const bx2=Math.max(...ps.map(p=>p.x+p.w)),by2=Math.max(...ps.map(p=>p.y+p.h));
         if(!forbiddenZones[board.id])forbiddenZones[board.id]=[];
         forbiddenZones[board.id].push({x:bx1,y:by1,w:bx2-bx1,h:by2-by1});
       }
@@ -793,36 +828,27 @@ function autoPlace(){
 
     for(const item of items){
       let done=false;
-
-      // まず既存ボードに配置を試みる
       for(let bi=0;bi<boards.length&&!done;bi++){
         const board=boards[bi];
         const fz=forbiddenZones[board.id]||[];
-        const pos=findPosWithForbidden(item,board.placed,fz);
+        const pos=findPosWithPattern(item,board.placed,fz,pattern);
         if(pos){
           const pid=nextPlacedId++;
-          board.placed.push({
-            id:pid,rectId:item.id,groupId:item.groupId,
+          board.placed.push({id:pid,rectId:item.id,groupId:item.groupId,
             x:pos.x,y:pos.y,w:item.w,h:item.h,
-            fill:item.fill,border:item.border,name:item.name
-          });
+            fill:item.fill,border:item.border,name:item.name});
           done=true;
         }
       }
-
-      // 既存ボードに入らなければ新しいボードに（禁止ゾーンなし）
       if(!done){
-        const newBid=nextBoardId++;
-        eb(newBid);
+        const newBid=nextBoardId++;eb(newBid);
         const board=boards[boards.length-1];
-        const pos=findPosWithForbidden(item,board.placed,[]);
+        const pos=findPosWithPattern(item,board.placed,[],pattern);
         if(pos){
           const pid=nextPlacedId++;
-          board.placed.push({
-            id:pid,rectId:item.id,groupId:item.groupId,
+          board.placed.push({id:pid,rectId:item.id,groupId:item.groupId,
             x:pos.x,y:pos.y,w:item.w,h:item.h,
-            fill:item.fill,border:item.border,name:item.name
-          });
+            fill:item.fill,border:item.border,name:item.name});
           done=true;
         }
         if(!done)toast('配置不可: '+item.name);
@@ -830,55 +856,86 @@ function autoPlace(){
     }
   }
 
-  // 常に最低2枚確保
   while(boards.length<2)eb(nextBoardId++);
+  const pat=AUTO_PATTERNS.find(p=>p.id===pattern);
   renderBoards();renderSidebar();updateStats();
-  toast('自動配置完了 — '+ap().length+'個を'+boards.length+'ページに配置');
+  toast('⚡ 自動配置［'+pat.label+'］— '+ap().length+'個・'+boards.length+'ページ');
 }
 
-/* 禁止ゾーン付きBL配置
-   item   : 配置したい矩形 {w,h}
-   placed : 同ボードの既配置矩形[]
-   fz     : 禁止ゾーン（先行グループBBox）[]  ← ここには入れない
-*/
-function findPosWithForbidden(item,placed,fz){
+/* パターン別位置探索
+   wide  : Y優先（行を埋めてから次の行）→ 横長BBox
+   tall  : X優先（列を埋めてから次の列）→ 縦長BBox
+   square: 候補点をBBoxアスペクト比1:1に近い順にソートして選択
+   balance: 既存BLと同じ（面積隙間最小） */
+function findPosWithPattern(item,placed,fz,pattern){
   const W=artboardW,H=artboardH;
-
-  // 候補Y・X座標をBL法で収集
-  const ys=new Set([0]);
-  const xs=new Set([0]);
+  const ys=new Set([0]),xs=new Set([0]);
   for(const p of placed){ys.add(p.y);ys.add(p.y+p.h);xs.add(p.x);xs.add(p.x+p.w)}
-  // 禁止ゾーンの境界も候補に加える（禁止ゾーンの外ギリギリに置けるように）
   for(const z of fz){ys.add(z.y);ys.add(z.y+z.h);xs.add(z.x);xs.add(z.x+z.w)}
 
   const sortedYs=[...ys].filter(y=>y>=0&&y+item.h<=H).sort((a,b)=>a-b);
   const sortedXs=[...xs].filter(x=>x>=0&&x+item.w<=W).sort((a,b)=>a-b);
 
+  // 有効な候補点をすべて収集
+  const candidates=[];
   for(const y of sortedYs){
     for(const x of sortedXs){
       if(x+item.w>W||y+item.h>H)continue;
       const c={x,y,w:item.w,h:item.h};
-      // 既配置との重なりチェック
-      if(placed.some(p=>ovlp(c,p)))continue;
-      // 禁止ゾーンとの重なりチェック
-      if(fz.some(z=>ovlp(c,z)))continue;
-      return{x,y};
-    }
-  }
-  // 候補点で見つからなければ1mm刻みでフルスキャン
-  for(let y=0;y<=H-item.h;y+=0.5){
-    for(let x=0;x<=W-item.w;x+=0.5){
-      const c={x:roundMm(x),y:roundMm(y),w:item.w,h:item.h};
       if(placed.some(p=>ovlp(c,p)))continue;
       if(fz.some(z=>ovlp(c,z)))continue;
-      return c;
+      candidates.push({x,y});
     }
   }
-  return null;
+
+  if(!candidates.length){
+    // フルスキャンフォールバック
+    for(let y=0;y<=H-item.h;y+=0.5){
+      for(let x=0;x<=W-item.w;x+=0.5){
+        const c={x:roundMm(x),y:roundMm(y),w:item.w,h:item.h};
+        if(placed.some(p=>ovlp(c,p)))continue;
+        if(fz.some(z=>ovlp(c,z)))continue;
+        return c;
+      }
+    }
+    return null;
+  }
+
+  if(pattern==='wide'){
+    // Y小→X小（行優先 = 横長）
+    candidates.sort((a,b)=>a.y-b.y||a.x-b.x);
+  } else if(pattern==='tall'){
+    // X小→Y小（列優先 = 縦長）
+    candidates.sort((a,b)=>a.x-b.x||a.y-b.y);
+  } else if(pattern==='square'){
+    // 配置後のBBoxアスペクト比が1:1に最も近い候補を選ぶ
+    const allP=[...placed];
+    candidates.sort((a,b)=>{
+      // 仮にaに置いた場合のBBox
+      const score=pos=>{
+        const px=[...allP.map(p=>p.x),pos.x,pos.x+item.w];
+        const py=[...allP.map(p=>p.y),pos.y,pos.y+item.h];
+        const bw=Math.max(...allP.map(p=>p.x+p.w),pos.x+item.w)-Math.min(...allP.map(p=>p.x),pos.x);
+        const bh=Math.max(...allP.map(p=>p.y+p.h),pos.y+item.h)-Math.min(...allP.map(p=>p.y),pos.y);
+        const ratio=bw>0&&bh>0?Math.min(bw,bh)/Math.max(bw,bh):0;
+        return ratio;
+      };
+      return score(b)-score(a); // ratio高い（正方形に近い）を優先
+    });
+  } else {
+    // balance: BL標準（Y→X）
+    candidates.sort((a,b)=>a.y-b.y||a.x-b.x);
+  }
+
+  return candidates[0];
 }
 
+// findPosWithForbidden は findPosWithPattern に統合
+function findPosWithForbidden(item,placed,fz){
+  return findPosWithPattern(item,placed,fz,'balance');
+}
 function findFreePos(item,board){
-  return findPosWithForbidden(item,board.placed,[]);
+  return findPosWithPattern(item,board.placed,[],'balance');
 }
 
 document.getElementById('clear-btn').onclick=()=>{
