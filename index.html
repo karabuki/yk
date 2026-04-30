@@ -340,28 +340,45 @@ function rr(p,bid){
 }
 function rmEl(id){const e=document.getElementById('pr-'+id);if(e)e.remove()}
 
+// ── 選択状態を唯一のソースオブトゥルースで管理 ──
+// selIds / selBid を更新したあとは必ず applySel() を呼ぶ
+
+function applySel(){
+  // 全placed-rectのクラスをリセットしてから再付与
+  document.querySelectorAll('.placed-rect').forEach(el=>{
+    el.classList.remove('selected','multi-sel');
+  });
+  const arr=[...selIds];
+  arr.forEach(id=>{
+    const el=document.getElementById('pr-'+id);
+    if(!el)return;
+    el.classList.add(arr.length===1?'selected':'multi-sel');
+  });
+  if(arr.length===1){
+    const el=document.getElementById('pr-'+arr[0]);
+    if(el)showRot(el); else hidRot();
+  } else {
+    hidRot();
+  }
+  updMI();
+}
+
 function clrSel(){
-  selIds.forEach(id=>{const el=document.getElementById('pr-'+id);if(el)el.classList.remove('selected','multi-sel')});
-  selIds.clear();selBid=null;hidRot();updMI();
+  selIds.clear();selBid=null;
+  applySel();
 }
 function setSel(ids,bid){
-  clrSel();
-  ids.forEach(id=>{selIds.add(id);const el=document.getElementById('pr-'+id);if(el)el.classList.add(ids.length===1?'selected':'multi-sel')});
+  selIds.clear();
+  ids.forEach(id=>selIds.add(id));
   selBid=bid;
-  if(ids.length===1){const el=document.getElementById('pr-'+ids[0]);if(el)showRot(el)}
-  updMI();
+  applySel();
 }
 function togSel(id,bid){
-  if(selBid&&selBid!==bid)clrSel();
-  const el=document.getElementById('pr-'+id);
-  if(selIds.has(id)){selIds.delete(id);el?.classList.remove('selected','multi-sel')}
-  else{selIds.add(id);selBid=bid;el?.classList.add('multi-sel')}
-  if(selIds.size===1){
-    const sid=[...selIds][0];
-    document.getElementById('pr-'+sid)?.classList.replace('multi-sel','selected');
-    const se=document.getElementById('pr-'+sid);if(se)showRot(se);
-  }else hidRot();
-  updMI();
+  if(selBid&&selBid!==bid){selIds.clear();selBid=null;}
+  if(selIds.has(id)){selIds.delete(id);}
+  else{selIds.add(id);selBid=bid;}
+  if(selIds.size===0)selBid=null;
+  applySel();
 }
 function updMI(){
   if(selIds.size<2){mi.style.display='none';return}
@@ -545,12 +562,11 @@ function drUp(){
       const handler=(ev)=>rectMD(ev,id,newBid);
       el.addEventListener('mousedown',handler);
     }
-    el.classList.add(items.length===1?'selected':'multi-sel');
-  });
+      });
 
-  if(!moved)toast('⚠ 衝突のため元の位置に戻しました');
+  if(!moved)toast('⚠ 衆突のため元の位置に戻しました');
   selBid=curBid;
-  if(items.length===1){const el=document.getElementById('pr-'+items[0].id);if(el)showRot(el)}
+  applySel();
   updateStats();renderSidebar();
   if(ids.length===1){const el=document.getElementById('pr-'+ids[0]);if(el)showRot(el)}
   updateStats();renderSidebar();drSt=null;
