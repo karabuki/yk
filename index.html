@@ -174,6 +174,10 @@ let csvGroups=[],rects=[],boards=[];
 let nextBoardId=1,nextPlacedId=1,nextGroupId=1;
 let selIds=new Set(),selBid=null;
 let artboardW=1088,artboardH=738,snapDist=20;
+// 矩形間マージン（mm）。矩形同士の衝突・配置判定に使用。
+// アートボード端には適用しない。
+const RECT_MARGIN = 5;
+
 const PAL=[
   {fill:'#ffc2c2',border:'#c03030'},{fill:'#b8d4ff',border:'#2a60c0'},
   {fill:'#b8f5c0',border:'#208a38'},{fill:'#fff0a0',border:'#b08000'},
@@ -333,15 +337,35 @@ function updateStats(){
   bg.innerHTML=html;
 }
 
+// マージンなし重なり判定（BBox計算・禁止ゾーン等で使用）
 function ovlp(a,b){return!(a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y)}
-function hasC(cand,bid,excl=[]){return gp(bid).some(p=>!excl.includes(p.id)&&ovlp(cand,p))}
+// マージン付き重なり判定（矩形同士の配置・衝突チェックで使用）
+function ovlpM(a,b){
+  const m=RECT_MARGIN;
+  return!(a.x+a.w+m<=b.x||b.x+b.w+m<=a.x||a.y+a.h+m<=b.y||b.y+b.h+m<=a.y);
+}
+function hasC(cand,bid,excl=[]){return gp(bid).some(p=>!excl.includes(p.id)&&ovlpM(cand,p))}
 function inB(r){return r.x>=0&&r.y>=0&&r.x+r.w<=artboardW&&r.y+r.h<=artboardH}
 function snapC(cand,bid,excl=[]){
   let best=null,bd=Infinity;
-  const cc=[{dx:0,dy:0},{dx:-cand.w,dy:0},{dx:0,dy:-cand.h},{dx:-cand.w,dy:-cand.h}];
+  const m=RECT_MARGIN;
+  // スナップ候補点: 各矩形の四隅からMARGIN離れた位置
+  // (矩形Aの右端+MARGIN がスナップ先 = 矩形BのTL になる、など)
+  const offsets=[
+    // 候補矩形の右/下 + MARGIN に cand のTL/BL/TR/BRを合わせる
+    {dx: m,      dy: 0     }, // 右隣
+    {dx: m,      dy:-cand.h}, // 右隣（下揃え）
+    {dx:-cand.w-m,dy:0     }, // 左隣
+    {dx:-cand.w-m,dy:-cand.h},// 左隣（下揃え）
+    {dx: 0,      dy: m     }, // 下隣
+    {dx:-cand.w, dy: m     }, // 下隣（右揃え）
+    {dx: 0,      dy:-cand.h-m},// 上隣
+    {dx:-cand.w, dy:-cand.h-m},// 上隣（右揃え）
+  ];
   for(const p of gp(bid)){if(excl.includes(p.id))continue;
-    for(const pc of[{x:p.x,y:p.y},{x:p.x+p.w,y:p.y},{x:p.x,y:p.y+p.h},{x:p.x+p.w,y:p.y+p.h}])
-      for(const c of cc){
+    const corners=[{x:p.x,y:p.y},{x:p.x+p.w,y:p.y},{x:p.x,y:p.y+p.h},{x:p.x+p.w,y:p.y+p.h}];
+    for(const pc of corners)
+      for(const c of offsets){
         const nx=pc.x+c.dx,ny=pc.y+c.dy,d=Math.hypot(cand.x-nx,cand.y-ny);
         if(d<snapDist&&d<bd){const sn={...cand,x:nx,y:ny};if(!hasC(sn,bid,excl)&&inB(sn)){best={x:nx,y:ny};bd=d}}
       }
@@ -947,7 +971,14 @@ function autoPlace(pattern='wide'){
 function findPosWithPattern(item,placed,fz,pattern){
   const W=artboardW,H=artboardH;
   const ys=new Set([0]),xs=new Set([0]);
-  for(const p of placed){ys.add(p.y);ys.add(p.y+p.h);xs.add(p.x);xs.add(p.x+p.w)}
+  const m=RECT_MARGIN;
+  for(const p of placed){
+    // 矩形の4辺からMARGIN分離れた位置も候補に（マージン付き配置の基準点）
+    ys.add(p.y);ys.add(p.y+p.h);
+    ys.add(p.y-m);ys.add(p.y+p.h+m);
+    xs.add(p.x);xs.add(p.x+p.w);
+    xs.add(p.x-m);xs.add(p.x+p.w+m);
+  }
   for(const z of fz){ys.add(z.y);ys.add(z.y+z.h);xs.add(z.x);xs.add(z.x+z.w)}
 
   const sortedYs=[...ys].filter(y=>y>=0&&y+item.h<=H).sort((a,b)=>a-b);
@@ -959,7 +990,7 @@ function findPosWithPattern(item,placed,fz,pattern){
     for(const x of sortedXs){
       if(x+item.w>W||y+item.h>H)continue;
       const c={x,y,w:item.w,h:item.h};
-      if(placed.some(p=>ovlp(c,p)))continue;
+      if(placed.some(p=>ovlpM(c,p)))continue;
       if(fz.some(z=>ovlp(c,z)))continue;
       candidates.push({x,y});
     }
@@ -970,7 +1001,7 @@ function findPosWithPattern(item,placed,fz,pattern){
     for(let y=0;y<=H-item.h;y+=0.5){
       for(let x=0;x<=W-item.w;x+=0.5){
         const c={x:roundMm(x),y:roundMm(y),w:item.w,h:item.h};
-        if(placed.some(p=>ovlp(c,p)))continue;
+        if(placed.some(p=>ovlpM(c,p)))continue;
         if(fz.some(z=>ovlp(c,z)))continue;
         return c;
       }
