@@ -125,7 +125,7 @@ html,body{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'S
       <input type="file" id="csv-input" accept=".csv,text/csv" multiple>
       <div class="btn-row">
         <button class="btn danger" id="clear-btn" style="flex:1">🗑</button>
-        <button class="btn purple" id="auto-place-btn" style="flex:2;flex-direction:column;gap:1px;padding:4px 6px"><span>⚡ 自動配置</span><span id="auto-place-pattern" style="font-size:7px;opacity:.7;letter-spacing:.5px">横長</span></button>
+        <button class="btn purple" id="auto-place-btn" style="flex:2">⚡ 自動配置</button>
         <button class="btn accent" id="export-btn" style="flex:2">↑ 書き出し</button>
       </div>
     </div>
@@ -781,26 +781,7 @@ function ldUp(e){
   toast('配置できる空きがありません');
 }
 
-// ─── 自動配置パターン管理 ───
-const AUTO_PATTERNS = [
-  { id:'wide',   label:'横長',     desc:'横方向優先' },
-  { id:'tall',   label:'縦長',     desc:'縦方向優先' },
-  { id:'square', label:'正方形',   desc:'BBox正方形に近似' },
-  { id:'balance',label:'バランス', desc:'隙間最小化' },
-];
-let autoPatternIdx = 0;
-
-function updatePatternLabel(){
-  const el=document.getElementById('auto-place-pattern');
-  if(el)el.textContent=AUTO_PATTERNS[autoPatternIdx].label+' ('+(autoPatternIdx+1)+'/'+AUTO_PATTERNS.length+')';
-}
-updatePatternLabel();
-
-document.getElementById('auto-place-btn').onclick=()=>{
-  autoPlace(AUTO_PATTERNS[autoPatternIdx].id);
-  autoPatternIdx=(autoPatternIdx+1)%AUTO_PATTERNS.length;
-  updatePatternLabel();
-};
+document.getElementById('auto-place-btn').onclick=()=>autoPlace();
 /* ══════════════════════════════════════════════════
    AUTO PLACE  —  グループ境界厳守アルゴリズム
 
@@ -832,7 +813,7 @@ function autoPlaceGroup(gid){
   const items=rects
     .filter(r=>r.groupId===gid)
     .map(r=>({...r}))
-    .sort((a,b)=>b.w*b.h-a.w*a.h);
+    .sort((a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h)||Math.min(b.w,b.h)-Math.min(a.w,a.h));
 
   // 禁止ゾーン: 他グループのBBox（ボードごと）
   const forbiddenZones={};
@@ -882,74 +863,94 @@ function autoPlaceGroup(gid){
    AUTO PLACE  —  4パターン対応
    pattern: 'wide' | 'tall' | 'square' | 'balance'
 ══════════════════════════════════════════════════════ */
-function autoPlace(pattern='wide'){
+function autoPlace(){
   if(!rects.length){toast('CSVを読み込んでください');return}
   ap().forEach(p=>rmEl(p.id));boards=[];nextPlacedId=1;nextBoardId=1;clrSel();
 
   const sgs=[...csvGroups].sort((a,b)=>a.priority-b.priority);
   eb(nextBoardId++);
 
+  const boardShelf={};
+  function getShelf(bid){
+    if(!boardShelf[bid])boardShelf[bid]={shelfX:0,shelfY:0,shelfH:0,shelfBaseH:0,nextY:0};
+    return boardShelf[bid];
+  }
+
   for(let gi=0;gi<sgs.length;gi++){
     const grp=sgs[gi];
+    // 最大辺降順ソート（大きい矩形から横長で詰める）
+    const items=rects.filter(r=>r.groupId===grp.id).map(r=>({...r}))
+      .sort((a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h)||Math.min(b.w,b.h)-Math.min(a.w,a.h));
 
-    // パターンごとのソート順
-    const rawItems=rects.filter(r=>r.groupId===grp.id).map(r=>({...r}));
-    let items;
-    if(pattern==='wide'){
-      // 横長: 幅が広い順、同幅なら高さ降順
-      items=rawItems.sort((a,b)=>b.w-a.w||b.h-a.h);
-    } else if(pattern==='tall'){
-      // 縦長: 高さが高い順、同高さなら幅降順
-      items=rawItems.sort((a,b)=>b.h-a.h||b.w-a.w);
-    } else if(pattern==='square'){
-      // 正方形: アスペクト比が1:1に近い順（面積大を優先）
-      items=rawItems.sort((a,b)=>{
-        const ra=Math.min(a.w,a.h)/Math.max(a.w,a.h);
-        const rb=Math.min(b.w,b.h)/Math.max(b.w,b.h);
-        return rb-ra||b.w*b.h-a.w*a.h;
-      });
-    } else {
-      // balance: 面積降順（隙間最小化）
-      items=rawItems.sort((a,b)=>b.w*b.h-a.w*a.h);
+    // このグループの開始Y = 前グループBBoxの下端
+    let groupStartY=0;
+    if(gi>0){
+      const prevPs=boards.flatMap(b=>b.placed).filter(p=>p.groupId===sgs[gi-1].id);
+      if(prevPs.length)groupStartY=Math.max(...prevPs.map(p=>p.y+p.h))+RECT_MARGIN;
     }
 
-    // 禁止ゾーン収集（前グループのBBox）
-    const forbiddenZones={};
-    for(let pi=0;pi<gi;pi++){
-      const prevGrp=sgs[pi];
-      for(const board of boards){
-        const ps=board.placed.filter(p=>p.groupId===prevGrp.id);
-        if(!ps.length)continue;
-        const bx1=Math.min(...ps.map(p=>p.x)),by1=Math.min(...ps.map(p=>p.y));
-        const bx2=Math.max(...ps.map(p=>p.x+p.w)),by2=Math.max(...ps.map(p=>p.y+p.h));
-        if(!forbiddenZones[board.id])forbiddenZones[board.id]=[];
-        forbiddenZones[board.id].push({x:bx1,y:by1,w:bx2-bx1,h:by2-by1});
-      }
-    }
+    // 高さ比率: 棚の基準高さ×0.5以上でないと別棚へ
+    // → サイズが揃った矩形のみ同じ行に並ぶ（省スペース）
+    const HEIGHT_RATIO=0.5;
 
     for(const item of items){
+      // 最大辺を横（幅）にする
+      let pw=item.w, ph=item.h;
+      if(ph>pw){pw=item.h;ph=item.w;}
+
       let done=false;
       for(let bi=0;bi<boards.length&&!done;bi++){
         const board=boards[bi];
-        const fz=forbiddenZones[board.id]||[];
-        const pos=findPosWithPattern(item,board.placed,fz,pattern);
-        if(pos){
+        const sh=getShelf(board.id);
+        const startY=gi===0?0:(bi===0?groupStartY:0);
+
+        // 棚のYが開始Yより前なら開始Yに移動
+        if(sh.shelfY<startY){
+          sh.shelfX=0;sh.shelfY=startY;sh.shelfH=0;sh.shelfBaseH=0;sh.nextY=startY;
+        }
+
+        // 高さ比率チェック: 棚の基準高さ×HEIGHT_RATIO以上かどうか
+        const heightOk=sh.shelfBaseH===0||ph>=sh.shelfBaseH*HEIGHT_RATIO;
+        const widthOk=sh.shelfX+pw<=artboardW;
+        const vertOk=sh.shelfY+ph<=artboardH;
+
+        if(widthOk&&vertOk&&heightOk){
+          // 現在の棚に配置
           const pid=nextPlacedId++;
           board.placed.push({id:pid,rectId:item.id,groupId:item.groupId,
-            x:pos.x,y:pos.y,w:item.w,h:item.h,
+            x:sh.shelfX,y:sh.shelfY,w:pw,h:ph,
             fill:item.fill,border:item.border,name:item.name});
+          if(sh.shelfBaseH===0)sh.shelfBaseH=ph;
+          sh.shelfH=Math.max(sh.shelfH,ph);
+          sh.nextY=Math.max(sh.nextY,sh.shelfY+sh.shelfH);
+          sh.shelfX+=pw+RECT_MARGIN;
           done=true;
+        } else {
+          // 次の棚へ
+          const ny=sh.nextY+RECT_MARGIN;
+          if(ny+ph<=artboardH){
+            sh.shelfX=0;sh.shelfY=ny;sh.shelfH=ph;sh.shelfBaseH=ph;sh.nextY=ny+ph;
+            const pid=nextPlacedId++;
+            board.placed.push({id:pid,rectId:item.id,groupId:item.groupId,
+              x:0,y:ny,w:pw,h:ph,
+              fill:item.fill,border:item.border,name:item.name});
+            sh.shelfX=pw+RECT_MARGIN;
+            done=true;
+          }
         }
       }
+
       if(!done){
         const newBid=nextBoardId++;eb(newBid);
         const board=boards[boards.length-1];
-        const pos=findPosWithPattern(item,board.placed,[],pattern);
-        if(pos){
+        const sh=getShelf(board.id);
+        sh.shelfX=0;sh.shelfY=0;sh.shelfH=0;sh.shelfBaseH=0;sh.nextY=0;
+        if(pw<=artboardW&&ph<=artboardH){
           const pid=nextPlacedId++;
           board.placed.push({id:pid,rectId:item.id,groupId:item.groupId,
-            x:pos.x,y:pos.y,w:item.w,h:item.h,
+            x:0,y:0,w:pw,h:ph,
             fill:item.fill,border:item.border,name:item.name});
+          sh.shelfBaseH=ph;sh.shelfH=ph;sh.nextY=ph;sh.shelfX=pw+RECT_MARGIN;
           done=true;
         }
         if(!done)toast('配置不可: '+item.name);
@@ -958,9 +959,8 @@ function autoPlace(pattern='wide'){
   }
 
   while(boards.length<2)eb(nextBoardId++);
-  const pat=AUTO_PATTERNS.find(p=>p.id===pattern);
   renderBoards();renderSidebar();updateStats();
-  toast('⚡ 自動配置［'+pat.label+'］— '+ap().length+'個・'+boards.length+'ページ');
+  toast('⚡ 自動配置完了 — '+ap().length+'個・'+boards.length+'ページ');
 }
 
 /* パターン別位置探索
@@ -1009,29 +1009,23 @@ function findPosWithPattern(item,placed,fz,pattern){
     return null;
   }
 
+  // パターンごとに候補をソートして最良位置を返す
   if(pattern==='wide'){
-    // Y小→X小（行優先 = 横長）
-    candidates.sort((a,b)=>a.y-b.y||a.x-b.x);
+    candidates.sort((a,b)=>a.y-b.y||a.x-b.x);  // 行優先（横長）
   } else if(pattern==='tall'){
-    // X小→Y小（列優先 = 縦長）
-    candidates.sort((a,b)=>a.x-b.x||a.y-b.y);
+    candidates.sort((a,b)=>a.x-b.x||a.y-b.y);  // 列優先（縦長）
   } else if(pattern==='square'){
-    // 配置後のBBoxアスペクト比が1:1に最も近い候補を選ぶ
-    const allP=[...placed];
+    // BBoxアスペクト比が1:1に近い候補を優先
     candidates.sort((a,b)=>{
-      // 仮にaに置いた場合のBBox
       const score=pos=>{
-        const px=[...allP.map(p=>p.x),pos.x,pos.x+item.w];
-        const py=[...allP.map(p=>p.y),pos.y,pos.y+item.h];
-        const bw=Math.max(...allP.map(p=>p.x+p.w),pos.x+item.w)-Math.min(...allP.map(p=>p.x),pos.x);
-        const bh=Math.max(...allP.map(p=>p.y+p.h),pos.y+item.h)-Math.min(...allP.map(p=>p.y),pos.y);
-        const ratio=bw>0&&bh>0?Math.min(bw,bh)/Math.max(bw,bh):0;
-        return ratio;
+        const bw=Math.max(...placed.map(p=>p.x+p.w),pos.x+item.w)-Math.min(...placed.map(p=>p.x),pos.x);
+        const bh=Math.max(...placed.map(p=>p.y+p.h),pos.y+item.h)-Math.min(...placed.map(p=>p.y),pos.y);
+        return bw>0&&bh>0?Math.min(bw,bh)/Math.max(bw,bh):0;
       };
-      return score(b)-score(a); // ratio高い（正方形に近い）を優先
+      return score(b)-score(a);
     });
   } else {
-    // balance: BL標準（Y→X）
+    // balance: BL（Y小→X小）
     candidates.sort((a,b)=>a.y-b.y||a.x-b.x);
   }
 
@@ -1068,29 +1062,97 @@ document.getElementById('do-export').onclick=()=>{
 };
 function cu(mm,u){if(u==='mm')return+mm.toFixed(4);if(u==='pt')return+(mm*2.8346).toFixed(4);return+(mm/0.2646).toFixed(4)}
 function expFile(name,fmt,unit){
-  const aw=cu(artboardW,unit),ah=cu(artboardH,unit),u=unit;
   const sorted=[...csvGroups].sort((a,b)=>a.priority-b.priority);
-  boards.forEach((board,idx)=>{
+
+  // 矩形が1つも配置されていないボードはスキップ
+  const filledBoards=boards.filter(b=>b.placed.length>0);
+  if(!filledBoards.length){toast('配置済みの矩形がありません');return}
+
+  // SVG/AI出力は常にpt単位（Illustratorとの最高互換性）
+  // 内部mmをptに変換: 1mm = 2.834645pt
+  const MM_TO_PT = 2.834645;
+  function toPt(mm){return(mm*MM_TO_PT).toFixed(4)}
+
+  // viewBox用: pt値（小数点なし）
+  const vbW = (artboardW * MM_TO_PT).toFixed(3);
+  const vbH = (artboardH * MM_TO_PT).toFixed(3);
+
+  // ユーザー選択単位での表示サイズ（widthとheight属性用）
+  const aw=cu(artboardW,unit),ah=cu(artboardH,unit),u=unit;
+
+  filledBoards.forEach((board,idx)=>{
     const gs=sorted.map(grp=>{
-      const gps=board.placed.filter(p=>p.groupId===grp.id);if(!gps.length)return'';
+      const gps=board.placed.filter(p=>p.groupId===grp.id);
+      if(!gps.length)return'';
       const rs=gps.map(p=>{
-        const x=cu(p.x,unit),y=cu(p.y,unit),w=cu(p.w,unit),h=cu(p.h,unit);
-        const lbl=p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-        const fs=cu(3.5,unit);
-        return'  <rect x="'+x+u+'" y="'+y+u+'" width="'+w+u+'" height="'+h+u+'" fill="'+p.fill+'" stroke="'+p.border+'" stroke-width="0.3'+u+'"/>\n  <text x="'+(x+w/2).toFixed(3)+u+'" y="'+(y+h/2).toFixed(3)+u+'" font-family="monospace" font-size="'+fs+u+'" fill="'+p.border+'" text-anchor="middle" dominant-baseline="middle">'+lbl+'</text>';
+        const x=toPt(p.x),y=toPt(p.y),w=toPt(p.w),h=toPt(p.h);
+        const lbl=p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const fs=(3.5*MM_TO_PT).toFixed(3); // フォントサイズ pt
+        const cx=(parseFloat(x)+parseFloat(w)/2).toFixed(3);
+        const cy=(parseFloat(y)+parseFloat(h)/2).toFixed(3);
+        // dominant-baselineの代わりにdy属性でテキストを中央寄せ（AI互換）
+        return [
+          '  <rect x="'+x+'pt" y="'+y+'pt" width="'+w+'pt" height="'+h+'pt"',
+          '    fill="'+p.fill+'" stroke="'+p.border+'" stroke-width="0.85pt"/>',
+          '  <text x="'+cx+'pt" y="'+cy+'pt" dy="0.35em"',
+          '    font-family="Helvetica, Arial, sans-serif" font-size="'+fs+'pt"',
+          '    fill="'+p.border+'" text-anchor="middle">'+lbl+'</text>',
+        ].join('\n');
       }).join('\n');
-      return'<g id="'+grp.fileName+'">\n'+rs+'\n</g>';
-    }).join('\n');
-    const sfx=boards.length>1?'_p'+(idx+1):'';
-    const svg=fmt==='ai'
-      ?'<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:i="http://ns.adobe.com/AdobeIllustrator/10.0/" x="0'+u+'" y="0'+u+'" width="'+aw+u+'" height="'+ah+u+'" viewBox="0 0 '+aw+' '+ah+'" xml:space="preserve">\n<rect width="'+aw+u+'" height="'+ah+u+'" fill="white"/>\n'+gs+'\n</svg>'
-      :'<?xml version="1.0" encoding="utf-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="'+aw+u+'" height="'+ah+u+'" viewBox="0 0 '+aw+' '+ah+'">\n<rect width="'+aw+u+'" height="'+ah+u+'" fill="white"/>\n'+gs+'\n</svg>';
+      const gid=grp.fileName.replace(/[^a-zA-Z0-9_-]/g,'_');
+      return'  <g id="'+gid+'" inkscape:label="'+grp.fileName+'">\n'+rs+'\n  </g>';
+    }).filter(Boolean).join('\n');
+
+    const sfx=filledBoards.length>1?'_p'+(idx+1):'';
     const ext=fmt==='ai'?'ai':'svg';
-    const blob=new Blob([svg],{type:'image/svg+xml'});const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download=name+sfx+'.'+ext;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+
+    let svg;
+    if(fmt==='ai'){
+      // Adobe Illustrator互換SVG
+      // AIはviewBox座標系=pt、width/heightに実寸単位を指定
+      svg=[
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"',
+        '  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">',
+        '<svg version="1.1"',
+        '  xmlns="http://www.w3.org/2000/svg"',
+        '  xmlns:xlink="http://www.w3.org/1999/xlink"',
+        '  xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"',
+        '  xmlns:ai="http://ns.adobe.com/AdobeIllustrator/10.0/"',
+        '  x="0pt" y="0pt"',
+        '  width="'+aw+u+'" height="'+ah+u+'"',
+        '  viewBox="0 0 '+vbW+' '+vbH+'"',
+        '  xml:space="preserve">',
+        '  <defs/>',
+        '  <!-- RectPlacer export | artboard: '+artboardW+'x'+artboardH+'mm -->',
+        '  <rect width="'+vbW+'pt" height="'+vbH+'pt" fill="#ffffff" stroke="none"/>',
+        gs,
+        '</svg>',
+      ].join('\n');
+    } else {
+      // 標準SVG（ブラウザ・Illustrator両対応）
+      svg=[
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<svg version="1.1"',
+        '  xmlns="http://www.w3.org/2000/svg"',
+        '  xmlns:xlink="http://www.w3.org/1999/xlink"',
+        '  width="'+aw+u+'" height="'+ah+u+'"',
+        '  viewBox="0 0 '+vbW+' '+vbH+'">',
+        '  <!-- RectPlacer export | artboard: '+artboardW+'x'+artboardH+'mm -->',
+        '  <rect width="'+vbW+'pt" height="'+vbH+'pt" fill="#ffffff" stroke="none"/>',
+        gs,
+        '</svg>',
+      ].join('\n');
+    }
+
+    const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=name+sfx+'.'+ext;
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);URL.revokeObjectURL(url);
   });
-  toast(filledBoards.length+'ファイルをダウンロード');
+  toast(filledBoards.length+'ファイルをダウンロードしました');
 }
 
 let tt;
