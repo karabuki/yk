@@ -151,7 +151,7 @@ html,body{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'S
   </div>
 </div>
 <button id="rotate-btn">&#8635;</button>
-<div id="area-badge"><div class="ab-label">配置面積（BBox）</div><div id="badge-groups"></div></div>
+<div id="area-badge"><div class="ab-label">配置面積</div><div id="badge-groups"></div></div>
 <div id="multi-info"></div>
 <div id="rubber-band"></div>
 <div id="ghost-rect"></div>
@@ -326,7 +326,7 @@ function renderSidebar(){
       const div=document.createElement('div');
       div.className='rect-item'+(ip?' placed':'');
       div.style.borderColor=ip?grp.border+'44':grp.border+'99';
-      div.innerHTML='<div class="rect-color-swatch" style="background:'+grp.fill+';border-color:'+grp.border+'"></div><div class="rect-item-info"><div class="rect-item-name">#'+(r.name.split('#')[1]||r.name)+'</div><div class="rect-item-dims">'+r.w+'x'+r.h+'mm</div></div>'+(ip?'<span class="placed-badge" data-pid="'+p.id+'" style="background:'+grp.border+'" title="クリックで引っ込める">&#10003;</span>':'');
+      div.innerHTML='<div class="rect-color-swatch" style="background:'+grp.fill+';border-color:'+grp.border+'"></div><div class="rect-item-info"><div class="rect-item-name">#'+(r.name.split('#')[1]||r.name)+'</div><div class="rect-item-dims">'+Math.ceil(r.w)+'x'+Math.ceil(r.h)+'mm</div></div>'+(ip?'<span class="placed-badge" data-pid="'+p.id+'" style="background:'+grp.border+'" title="クリックで引っ込める">&#10003;</span>':'');
       if(!ip)div.addEventListener('mousedown',e=>listDragStart(e,r));
       const badge=div.querySelector('.placed-badge');
       if(badge)badge.addEventListener('click',e=>{e.stopPropagation();recall(parseInt(badge.dataset.pid))});
@@ -358,12 +358,23 @@ function updateStats(){
     const bbox=bboxGrp(grp.id);
     const gpc=allp.filter(p=>p.groupId===grp.id).length;
     const gtc=rects.filter(r=>r.groupId===grp.id).length;if(!gtc)return;
-    const as=bbox?Math.round(bbox.area).toLocaleString('ja-JP'):'—';
-    const ws=bbox?bbox.w.toFixed(1):'—',hs=bbox?bbox.h.toFixed(1):'—';
+    const as=bbox?Math.ceil(bbox.area).toLocaleString('ja-JP'):'—';
+    const ws=bbox?Math.ceil(bbox.w):'—',hs=bbox?Math.ceil(bbox.h):'—';
     const code=grp.fileName.match(/\d{8}/);
     const lbl=code?code[0]:grp.fileName.replace(/\.csv$/i,'');
-    html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><div style="width:7px;height:7px;border-radius:1px;background:'+grp.fill+';border:1.5px solid '+grp.border+';flex-shrink:0"></div><span style="font-size:9px;color:var(--muted);flex:1">'+lbl+' '+gpc+'/'+gtc+'</span><span style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:'+grp.border+'">'+as+'</span></div><div style="font-size:8px;color:var(--muted);margin-bottom:5px;padding-left:13px">'+ws+'x'+hs+' mm²</div>';
+    html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><div style="width:7px;height:7px;border-radius:1px;background:'+grp.fill+';border:1.5px solid '+grp.border+';flex-shrink:0"></div><span style="font-size:9px;color:var(--muted);flex:1">'+lbl+' '+gpc+'/'+gtc+'</span><span style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:'+grp.border+'">'+as+'</span></div><div style="font-size:8px;color:var(--muted);margin-bottom:5px;padding-left:13px">'+ws+'×'+hs+' mm²</div>';
   });
+  // 残り面積
+  const boardArea=artboardW*artboardH*boards.filter(b=>b.placed.length).length||artboardW*artboardH;
+  const usedArea=allp.reduce((s,p)=>s+p.w*p.h,0);
+  const remaining=boardArea-usedArea;
+  const pct=Math.max(0,Math.round(remaining/boardArea*100));
+  html+='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline">'
+    +'<span style="font-size:8px;color:var(--muted)">残り面積</span>'
+    +'<span style="font-size:11px;font-family:Syne,sans-serif;font-weight:700;color:var(--muted)">'+pct+'%</span>'
+    +'</div>'
+    +'<div style="font-size:8px;color:var(--muted);text-align:right">'
+    +Math.ceil(remaining).toLocaleString('ja-JP')+' mm²</div>';
   bg.innerHTML=html;
 }
 
@@ -510,10 +521,11 @@ function rbUp(e){
   const rx2mm=pm(Math.max(sx,e.clientX)-ar2.left);
   const ry2mm=pm(Math.max(sy,e.clientY)-ar2.top);
   if(rx2mm-rx1mm<1&&ry2mm-ry1mm<1)return; // 1mm未満は無視
-  // mm座標で矩形が完全に囲まれているか判定
-  const hit=gp(bid).filter(p=>
-    p.x>=rx1mm&&p.y>=ry1mm&&(p.x+p.w)<=rx2mm&&(p.y+p.h)<=ry2mm
-  );
+  // mm座標でラバーバンドと矩形の中心が重なるものを選択
+  const hit=gp(bid).filter(p=>{
+    const cx=p.x+p.w/2, cy=p.y+p.h/2;
+    return cx>=rx1mm&&cx<=rx2mm&&cy>=ry1mm&&cy<=ry2mm;
+  });
   if(hit.length)setSel(hit.map(p=>p.id),bid);
 }
 
@@ -585,10 +597,19 @@ function drMv(e){
     let y=roundMm(pm(e.clientY-hovAr.top) -dy);
     x=Math.max(0,Math.min(artboardW-p.w,x));
     y=Math.max(0,Math.min(artboardH-p.h,y));
-    // 単体なら同ボード内スナップ（除外: ドラッグ中の全選択矩形）
-    if(items.length===1&&hovBid===srcBid){
+    // スナップ（単体・複数どちらも効かせる、ただし複数は代表矩形のみ）
+    if(hovBid===srcBid&&(items.length===1||id===items[0].id)){
       const sn=snapC({x,y,w:p.w,h:p.h},hovBid,[...selIds]);
-      if(sn){x=sn.x;y=sn.y}
+      if(sn&&items.length===1){x=sn.x;y=sn.y}
+      else if(sn&&items.length>1){
+        // 代表矩形のスナップ量を全矩形に適用
+        const sdx=sn.x-x, sdy=sn.y-y;
+        drSt._snapDx=sdx; drSt._snapDy=sdy;
+        x=sn.x; y=sn.y;
+      }
+    } else if(items.length>1&&drSt._snapDx!==undefined&&id!==items[0].id){
+      x=roundMm(Math.max(0,Math.min(artboardW-p.w,x+drSt._snapDx)));
+      y=roundMm(Math.max(0,Math.min(artboardH-p.h,y+drSt._snapDy)));
     }
     // 表示更新（DOM上の位置とp.x/p.yを同期 → 衝突判定にも使われる）
     p.x=x;p.y=y;
@@ -904,7 +925,7 @@ async function runAIPlace(){
     const label=g.fileName.match(/\d{8}/)?.[0]||g.fileName.replace(/\.csv$/i,'');
     return 'グループ'+label+':\n'+gr.map(r=>{
       const num=r.name.split('#')[1]||r.name;
-      return '  id='+Math.round(r.id)+' #'+num+' '+r.w+'x'+r.h+'mm';
+      return '  id='+Math.round(r.id)+' #'+num+' '+Math.ceil(r.w)+'x'+Math.ceil(r.h)+'mm';
     }).join('\n');
   }).join('\\n')
 
