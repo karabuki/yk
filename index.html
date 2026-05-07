@@ -47,8 +47,8 @@ html,body{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'S
 .rect-item:hover{background:var(--ui-surface2);border-color:var(--ui-border)}
 .rect-item.placed{opacity:.55;cursor:default}
 .rect-color-swatch{width:8px;height:8px;border-radius:2px;flex-shrink:0;border:1px solid}
-.rect-item-info{flex:1;min-width:0}
-.rect-item-name{font-size:9px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rect-item-info{flex:1;min-width:0;display:flex;align-items:baseline;gap:4px;overflow:hidden}
+.rect-item-name{font-size:9px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:1}
 .rect-item-dims{font-size:8px;color:var(--ui-muted)}
 .placed-badge{font-size:9px;padding:2px 6px;color:#fff;border-radius:10px;cursor:pointer;flex-shrink:0;font-weight:500}
 .placed-badge:hover{opacity:.65}
@@ -94,7 +94,7 @@ html,body{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'S
 #rotate-btn{position:fixed;z-index:500;display:none;background:var(--accent);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:13px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.4);align-items:center;justify-content:center;transition:transform .12s}
 #rotate-btn:hover{transform:scale(1.1) rotate(20deg)}
 #rotate-btn.visible{display:flex}
-#area-badge{position:fixed;bottom:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;z-index:300;pointer-events:none;min-width:160px;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+#area-badge{position:fixed;bottom:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;z-index:300;pointer-events:none;min-width:160px;box-shadow:0 2px 12px rgba(0,0,0,.3);opacity:.85}
 .ab-label{font-size:7px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
 #multi-info{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 6px;font-size:10px;color:var(--muted);z-index:400;display:none;box-shadow:0 2px 12px rgba(0,0,0,.3)}
 #multi-info .mi-label{font-size:9px;color:var(--muted);white-space:nowrap;padding:0 4px}
@@ -117,14 +117,15 @@ html,body{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'S
 <body>
 <div id="app">
   <div id="sidebar">
-    <div id="sidebar-header"><h1 style="font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.3px">RectPlacer</h1><p style="font-size:9px;color:var(--muted)">配置ツール</p></div>
+    <div id="sidebar-header"><h1 style="font-size:14px;font-weight:700;color:#ffffff;letter-spacing:-.3px">RectPlacer</h1><p style="font-size:9px;color:var(--muted)">配置ツール</p></div>
     <div id="group-order-hint">⋮⋮ ドラッグで優先順変更</div>
     <div id="rect-list-wrap"><div id="rect-list"></div></div>
     <div id="sidebar-bottom">
       <label id="csv-label" for="csv-input">📂 CSV読み込み（複数可）</label>
       <input type="file" id="csv-input" accept=".csv,text/csv" multiple>
       <div class="btn-row">
-        <button class="btn danger" id="clear-btn" style="flex:1">🗑</button>
+        <button class="btn danger" id="clear-btn" style="flex:1" title="すべてクリア（CSV含む）">🗑</button>
+        <button class="btn danger" id="unplace-all-btn" style="flex:1" title="配置をすべて未配置に戻す">↩</button>
         <button class="btn purple" id="auto-place-btn" style="flex:2">⚡ 自動配置</button>
         <button class="btn accent" id="export-btn" style="flex:2">↑ 書き出し</button>
       </div>
@@ -141,7 +142,7 @@ html,body{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'S
       <span class="tbar-unit">mm</span>
       <button class="btn" id="apply-ab-btn" style="padding:3px 8px">適用</button>
       <div class="sep"></div>
-      <span class="tbar-label">SNAP</span>
+      <span class="tbar-label">スナップ</span>
       <input type="number" id="snap-dist" value="20" min="0" max="50" step="0.5" style="width:44px">
       <span class="tbar-unit">mm</span>
       <div class="sep"></div>
@@ -326,7 +327,7 @@ function renderSidebar(){
       const div=document.createElement('div');
       div.className='rect-item'+(ip?' placed':'');
       div.style.borderColor=ip?grp.border+'44':grp.border+'99';
-      div.innerHTML='<div class="rect-color-swatch" style="background:'+grp.fill+';border-color:'+grp.border+'"></div><div class="rect-item-info"><div class="rect-item-name">#'+(r.name.split('#')[1]||r.name)+'</div><div class="rect-item-dims">'+Math.ceil(r.w)+'x'+Math.ceil(r.h)+'mm</div></div>'+(ip?'<span class="placed-badge" data-pid="'+p.id+'" style="background:'+grp.border+'" title="クリックで引っ込める">&#10003;</span>':'');
+      div.innerHTML='<div class="rect-color-swatch" style="background:'+grp.fill+';border-color:'+grp.border+'"></div><div class="rect-item-info" style="display:flex;align-items:baseline;gap:4px;min-width:0"><div class="rect-item-name">#'+(r.name.split('#')[1]||r.name)+'</div><div class="rect-item-dims" style="font-size:7px;white-space:nowrap">'+Math.ceil(r.w)+'×'+Math.ceil(r.h)+'mm</div></div>'+(ip?'<span class="placed-badge" data-pid="'+p.id+'" style="background:'+grp.border+'" title="クリックで引っ込める">&#10003;</span>':'');
       if(!ip)div.addEventListener('mousedown',e=>listDragStart(e,r));
       const badge=div.querySelector('.placed-badge');
       if(badge)badge.addEventListener('click',e=>{e.stopPropagation();recall(parseInt(badge.dataset.pid))});
@@ -665,7 +666,7 @@ function drUp(){
     }
       });
 
-  if(!moved)toast('⚠ 衆突のため元の位置に戻しました');
+  if(!moved)toast('⚠ 衝突するため元の位置に戻しました');
   selBid=curBid;
   applySel();
   updateStats();renderSidebar();
@@ -1297,6 +1298,17 @@ function findPosWithForbidden(item,placed,fz){
 function findFreePos(item,board){
   return findPosWithPattern(item,board.placed,[],'balance');
 }
+
+document.getElementById('unplace-all-btn').onclick=()=>{
+  // 配置をすべて未配置に戻す（CSVはそのまま）
+  ap().forEach(p=>rmEl(p.id));
+  boards.forEach(b=>b.placed=[]);
+  // ボードは2枚維持
+  while(boards.length<2)eb(nextBoardId++);
+  clrSel();
+  renderBoards();renderSidebar();updateStats();
+  showToast('配置をすべて未配置に戻しました');
+};
 
 document.getElementById('clear-btn').onclick=()=>{
   ap().forEach(p=>rmEl(p.id));boards=[];rects=[];csvGroups=[];palIdx=0;
