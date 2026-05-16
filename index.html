@@ -176,7 +176,7 @@ html,body{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'S
     <h2>エクスポート設定</h2>
     <div class="form-group"><label>ファイル名</label><input type="text" id="export-name" value="artboard"></div>
     <div class="form-group"><label>フォーマット</label>
-      <select id="export-fmt"><option value="svg">SVG</option><option value="ai">AI (SVG)</option></select></div>
+      <select id="export-fmt"><option value="svg">SVG</option><option value="ai">AI (SVG)</option><option value="jpg">JPG</option><option value="pdf">PDF</option></select></div>
     <div class="form-group"><label>単位</label>
       <select id="export-unit"><option value="mm" selected>mm</option><option value="pt">pt</option><option value="px">px</option></select></div>
     <div class="modal-actions">
@@ -1430,55 +1430,67 @@ function expFile(name,fmt,unit){
       ].join('\n');
     }
 
-    const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;a.download=name+sfx+'.'+ext;
-    document.body.appendChild(a);a.click();
-    document.body.removeChild(a);URL.revokeObjectURL(url);
+    if(fmt==='jpg'||fmt==='pdf'){
+      // SVGをCanvasに描画してJPG/PDFに変換
+      const DPI=150; // 出力解像度
+      const PX_PER_MM=DPI/25.4;
+      const cw=Math.round(artboardW*PX_PER_MM);
+      const ch=Math.round(artboardH*PX_PER_MM);
+      const canvas=document.createElement('canvas');
+      canvas.width=cw;canvas.height=ch;
+      const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,cw,ch);
+      const img=new Image();
+      const svgBlob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+      const svgUrl=URL.createObjectURL(svgBlob);
+      img.onload=()=>{
+        ctx.drawImage(img,0,0,cw,ch);
+        URL.revokeObjectURL(svgUrl);
+        if(fmt==='jpg'){
+          const jpgUrl=canvas.toDataURL('image/jpeg',0.92);
+          const a=document.createElement('a');
+          a.href=jpgUrl;a.download=name+sfx+'.jpg';
+          document.body.appendChild(a);a.click();document.body.removeChild(a);
+        } else {
+          // PDF: SVGをPDFラッパーで包む（Acrobat/プレビューで開ける）
+          const jpgData=canvas.toDataURL('image/jpeg',0.95);
+          const jpgBase64=jpgData.split(',')[1];
+          // A4換算: 1mm=2.834645pt
+          const MM2PT=2.834645;
+          const pw=(artboardW*MM2PT).toFixed(2);
+          const ph=(artboardH*MM2PT).toFixed(2);
+          // 簡易PDFをバイナリで生成
+          const pdfContent=buildSimplePDF(jpgBase64,cw,ch,parseFloat(pw),parseFloat(ph));
+          const pdfBlob=new Blob([pdfContent],{type:'application/pdf'});
+          const pdfUrl=URL.createObjectURL(pdfBlob);
+          const a=document.createElement('a');
+          a.href=pdfUrl;a.download=name+sfx+'.pdf';
+          document.body.appendChild(a);a.click();
+          document.body.removeChild(a);URL.revokeObjectURL(pdfUrl);
+        }
+      };
+      img.src=svgUrl;
+    } else {
+      const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download=name+sfx+'.'+ext;
+      document.body.appendChild(a);a.click();
+      document.body.removeChild(a);URL.revokeObjectURL(url);
+    }
   });
   toast(filledBoards.length+'ファイルをダウンロードしました');
 }
 
-let tt;
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2800)}
-
-document.addEventListener('keydown',e=>{
-  if(document.activeElement.tagName==='INPUT')return;
-  if(e.key==='r'||e.key==='R')rotSel();
-  if(e.key==='u'||e.key==='U')recallAll();
-  if(e.key==='h'||e.key==='H')reflectSel('h');
-  if(e.key==='v'||e.key==='V')reflectSel('v');
-  if(e.key==='Escape')clrSel();
-  if(e.key==='Delete'||e.key==='Backspace'){
-    [...selIds].forEach(id=>{for(const b of boards){const i=b.placed.findIndex(p=>p.id===id);if(i!==-1){rmEl(b.placed[i].id);b.placed.splice(i,1);break}}});
-    clrSel();renderSidebar();updateStats();
-  }
-});
-vp.addEventListener('scroll',()=>{if(selIds.size===1){const el=document.getElementById('pr-'+[...selIds][0]);if(el)showRot(el)}});
-
-(function(){
-  const c1=[
-    '"フォルダパス","ファイル名","最上位レイヤー名","オブジェクト番号","オブジェクト種類","横サイズmm","縦サイズmm","横サイズpt","縦サイズpt"',
-    '"/p","02622867_1回焼ファイル.ai","レイヤー 1","1","GroupItem","754.999","125.265","",""',
-    '"/p","02622867_1回焼ファイル.ai","レイヤー 1","2","GroupItem","519","125.265","",""',
-    '"/p","02622867_1回焼ファイル.ai","レイヤー 1","3","GroupItem","236","81.641","",""',
-    '"/p","02622867_1回焼ファイル.ai","レイヤー 1","4","GroupItem","70.398","64.623","",""',
-    '"/p","ネガ.ai","有効範囲","","オブジェクトなし","","","",""',
-  ].join('\n');
-  const c2=[
-    '"フォルダパス","ファイル名","最上位レイヤー名","オブジェクト番号","オブジェクト種類","横サイズmm","縦サイズmm","横サイズpt","縦サイズpt"',
-    '"/p","02623522_1回焼ファイル.ai","レイヤー 1","1","GroupItem","400.255","172.464","",""',
-    '"/p","02623522_1回焼ファイル.ai","レイヤー 1","2","GroupItem","400.255","172.464","",""',
-    '"/p","02623522_1回焼ファイル.ai","レイヤー 1","3","GroupItem","127.3","57.899","",""',
-    '"/p","02623522_1回焼ファイル.ai","レイヤー 1","4","GroupItem","127.983","57.899","",""',
-    '"/p","02623522_1回焼ファイル.ai","レイヤー 1","5","GroupItem","101.526","64.707","",""',
-    '"/p","02623522_1回焼ファイル.ai","レイヤー 1","6","GroupItem","102.257","64.707","",""',
-    '"/p","ネガ.ai","有効範囲","","オブジェクトなし","","","",""',
-  ].join('\n');
-  loadCsv(c1,'02622867.csv');loadCsv(c2,'02623522.csv');
-  renderBoards();renderSidebar();updateStats();
-})();
-</script>
-</body>
-</html>
+// 簡易PDF生成（JPG埋め込み）
+function buildSimplePDF(jpgBase64,imgW,imgH,pageW,pageH){
+  const jpgBytes=atob(jpgBase64);
+  const jpgLen=jpgBytes.length;
+  const enc=new TextEncoder();
+  // PDFオブジェクト構築
+  const objs=[];
+  const offsets=[];
+  let pos=0;
+  const w=s=>{pos+=s.length;return s};
+  let out='%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
+  pos=out.l
