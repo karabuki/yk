@@ -264,7 +264,12 @@ function renderBoards(){
     board.placed.forEach(p=>rr(p,board.id));
   });
 }
-new ResizeObserver(()=>renderBoards()).observe(vp);
+// ResizeObserver: debounceでループエラーを防ぐ
+let _rbTimer=null;
+new ResizeObserver(()=>{
+  clearTimeout(_rbTimer);
+  _rbTimer=setTimeout(()=>renderBoards(),50);
+}).observe(vp);
 document.getElementById('apply-ab-btn').onclick=()=>{artboardW=parseFloat(document.getElementById('ab-w').value)||1088;artboardH=parseFloat(document.getElementById('ab-h').value)||738;renderBoards()};
 document.getElementById('snap-dist').onchange=e=>snapDist=parseFloat(e.target.value)||5;
 
@@ -1576,7 +1581,10 @@ vp.addEventListener('scroll',()=>{if(selIds.size===1){const el=document.getEleme
     '"/p","ネガ.ai","有効範囲","","オブジェクトなし","","","",""',
   ].join('\n');
   loadCsv(c1,'02622867.csv');loadCsv(c2,'02623522.csv');
-  renderBoards();renderSidebar();updateStats();
+  // DOM描画完了後にrenderを実行（ResizeObserverエラー防止）
+  requestAnimationFrame(()=>{
+    renderBoards();renderSidebar();updateStats();
+  });
 })();
 </script>
 </body>
