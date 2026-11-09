@@ -1180,7 +1180,7 @@ const PACK_OPTS=(()=>{
     for(const sort of['maxSide','area','height','width'])
       for(const ratio of[0,0.3,0.4,0.5,0.6,0.7,0.85])
         for(const policy of['last','firstfit'])
-          for(const stack of[true,false])
+          for(const stack of[true,'grow',false])
             list.push({orient,sort,ratio,policy,stack});
   return list;
 })();
@@ -1195,7 +1195,11 @@ function orientItem(it,orient){
 // 1つの条件でグループを棚詰めする（状態は変更しない）
 // floors: 各ボードの使用開始Y（前グループの下端+マージン）。足りなければ0で追加
 function packGroupTrial(items,opt,startBi,floors,W,H,m){
-  const oriented=items.map(it=>({it,...orientItem(it,opt.orient)}));
+  const oriented=items.map(it=>{
+    const o=orientItem(it,opt.orient);
+    // flip: 個別に向きを反転する矩形（局所改善で使用）
+    return opt.flip&&opt.flip.has(it.id)?{it,w:o.h,h:o.w}:{it,...o};
+  });
   const key={
     maxSide:o=>[Math.max(o.w,o.h),Math.min(o.w,o.h)],
     area:o=>[o.w*o.h,Math.max(o.w,o.h)],
@@ -1218,9 +1222,13 @@ function packGroupTrial(items,opt,startBi,floors,W,H,m){
       // ② 隙間埋め: 既存の列の下に積む
       if(opt.stack){
         for(const col of sh.cols){
-          if(pw<=col.w+1e-6&&col.usedH+m+ph<=sh.h+1e-6){
+          const nh=col.usedH+m+ph;
+          // 棚を高くして積むのは、列とほぼ同じ幅の矩形だけ（横に無駄が出ないように）
+          const canGrow=opt.stack==='grow'&&isLast&&pw>=col.w*0.8&&sh.y+nh<=H+1e-6;
+          if(pw<=col.w+1e-6&&(nh<=sh.h+1e-6||canGrow)){
             const y=sh.y+col.usedH+m;
-            col.usedH+=m+ph;
+            col.usedH=nh;
+            if(nh>sh.h)sh.h=nh;
             return{x:col.x,y};
           }
         }
@@ -1298,12 +1306,17 @@ function bestPackGroup(items,startBi,floors,W,H,m,pattern){
 
   const byArea=(a,b)=>a.area-b.area;
   // n番目に小さい値（1mm未満の差は同じ値とみなす）を持つ案のうち面積最小
+  // field(高さ/横幅)がn番目に小さいグループの中から、
+  // もう一方の寸法 → 面積 の順に小さい案を選ぶ（差が1%以内は同じとみなす）
   function nth(field,n){
+    const other=field==='bh'?'bw':'bh';
+    const tol=v=>Math.max(2,v*0.01);
     const vals=[];
     for(const v of pool.map(r=>r[field]).sort((a,b)=>a-b))
-      if(!vals.length||v-vals[vals.length-1]>=1)vals.push(v);
+      if(!vals.length||v-vals[vals.length-1]>tol(vals[vals.length-1]))vals.push(v);
     const target=vals[Math.min(n,vals.length-1)];
-    return pool.filter(r=>Math.abs(r[field]-target)<1).sort(byArea)[0];
+    return pool.filter(r=>r[field]>=target-1e-6&&r[field]<=target+tol(target))
+      .sort((a,b)=>a[other]-b[other]||byArea(a,b))[0];
   }
   function squarish(landscape){
     // 面積が最小案の1.3倍以内の案に限定（無駄に広がった案を除外）
@@ -1354,12 +1367,17 @@ function findBlockSpot(bw,bh,obs,W,H,m){
 // パターンの基準で候補から1つ選ぶ（候補: {bw,bh,area,...}）
 function pickByPattern(pool,pattern){
   const byArea=(a,b)=>a.area-b.area||a.y-b.y||a.x-b.x;
+  // field(高さ/横幅)がn番目に小さいグループの中から、
+  // もう一方の寸法 → 面積 の順に小さい案を選ぶ（差が1%以内は同じとみなす）
   function nth(field,n){
+    const other=field==='bh'?'bw':'bh';
+    const tol=v=>Math.max(2,v*0.01);
     const vals=[];
     for(const v of pool.map(r=>r[field]).sort((a,b)=>a-b))
-      if(!vals.length||v-vals[vals.length-1]>=1)vals.push(v);
+      if(!vals.length||v-vals[vals.length-1]>tol(vals[vals.length-1]))vals.push(v);
     const target=vals[Math.min(n,vals.length-1)];
-    return pool.filter(r=>Math.abs(r[field]-target)<1).sort(byArea)[0];
+    return pool.filter(r=>r[field]>=target-1e-6&&r[field]<=target+tol(target))
+      .sort((a,b)=>a[other]-b[other]||byArea(a,b))[0];
   }
   function squarish(landscape){
     const minA=Math.min(...pool.map(r=>r.area));
@@ -1398,17 +1416,59 @@ function placeBlockGroup(items,pattern,obsByBoard,W,H,m){
   capList.splice(10);
 
   const cands=[],seenBlk=new Set();
-  for(const[cw,ch]of capList)for(const opt of PACK_OPTS){
+  // 1つの条件で詰めて、置ける位置があれば候補に追加
+  function tryAdd(opt,cw,ch){
     const r=packGroupTrial(items,opt,0,[0],cw,ch,m);
-    if(r.fails||r.lastBi)continue;
+    if(r.fails||r.lastBi)return null;
     const sig=r.out.map(p=>p.item.id+':'+Math.round(p.x)+','+Math.round(p.y)+','+Math.round(p.w)).sort().join('|');
-    if(seenBlk.has(sig))continue;seenBlk.add(sig);
+    if(seenBlk.has(sig))return null;seenBlk.add(sig);
     const bb=bboxOf(r.out);
-    // 左上に寄せた相対座標
     const rel=r.out.map(p=>({...p,x:p.x-bb.x,y:p.y-bb.y}));
     for(let bi=0;bi<=nB;bi++){
       const spot=findBlockSpot(bb.w,bb.h,obsAt(bi),W,H,m);
-      if(spot){cands.push({rel,bi,x:spot.x,y:spot.y,bw:bb.w,bh:bb.h,area:bb.w*bb.h});break;}
+      if(spot){
+        const c={rel,bi,x:spot.x,y:spot.y,bw:bb.w,bh:bb.h,area:bb.w*bb.h,opt,cw,ch};
+        cands.push(c);return c;
+      }
+    }
+    return null;
+  }
+  // 2段階: 1回目の結果の幅・高さを枠にして詰め直すと、さらに締まった形が見つかる
+  for(let pass=0;pass<2;pass++){
+    if(pass===1){
+      const pick=arr=>{const out=[];for(const v of arr.sort((a,b)=>a-b))if(!out.length||v-out[out.length-1]>2)out.push(v);return out.slice(0,8)};
+      const ws=pick(cands.map(c=>c.bw)),hs=pick(cands.map(c=>c.bh));
+      capList.length=0;
+      for(const w of ws)capList.push([w+0.01,H]);
+      for(const hh of hs)capList.push([W,hh+0.01]);
+    }
+    for(const[cw,ch]of capList)for(const opt of PACK_OPTS)tryAdd(opt,cw,ch);
+  }
+  // 局所改善: 有力候補について、矩形を1つずつ90°反転して詰め直し、良くなれば採用
+  if(cands.length){
+    const minBi0=Math.min(...cands.map(c=>c.bi));
+    const measures=[
+      c=>[c.area],
+      c=>[c.bh,c.bw],
+      c=>[c.bw,c.bh],
+      c=>[Math.max(c.bw,c.bh)/Math.max(1,Math.min(c.bw,c.bh)),c.area],
+    ];
+    const lt=(a,b)=>{for(let i=0;i<a.length;i++){if(a[i]<b[i]-0.5)return true;if(a[i]>b[i]+0.5)return false}return false};
+    const ids=items.filter(it=>Math.abs(it.w-it.h)>0.5).map(it=>it.id);
+    for(const f of measures){
+      const seeds=cands.filter(c=>c.bi===minBi0).sort((a,b)=>lt(f(a),f(b))?-1:lt(f(b),f(a))?1:0).slice(0,items.length<=20?16:items.length<=40?6:3);
+      for(let seed of seeds){
+        for(let round=0;round<3;round++){
+          let improved=false;
+          for(const id of ids){
+            const flip=new Set(seed.opt.flip||[]);
+            flip.has(id)?flip.delete(id):flip.add(id);
+            const c=tryAdd({...seed.opt,flip},seed.cw,seed.ch);
+            if(c&&c.bi===minBi0&&lt(f(c),f(seed))){seed=c;improved=true;}
+          }
+          if(!improved)break;
+        }
+      }
     }
   }
   if(cands.length){
