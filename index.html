@@ -1411,6 +1411,75 @@ function pickByPattern(pool,pattern){
 }
 
 // obsByBoard: ボードごとの障害物BBox配列。戻り値 {out:[{bi,x,y,w,h,item}], fails}
+/* 空きエリアへの回り込み配置
+   ブロックのままでは入らないが、アートボードの空き（L字など）には入る場合、
+   他のCSVの範囲（BBox）を避けながら1個ずつ詰める。
+   各矩形は「グループ全体のBBoxが一番小さくなる位置」に置く。 */
+const FREE_OPTS=(()=>{
+  const l=[];
+  for(const sort of['maxSide','area','height','width'])
+    for(const orient of['asis','wide','tall'])
+      for(const score of['area','bl','lb','h','w'])l.push({sort,orient,score});
+  return l;
+})();
+function freePack(items,obs,W,H,m,opt){
+  const key={
+    maxSide:o=>[Math.max(o.w,o.h),Math.min(o.w,o.h)],
+    area:o=>[o.w*o.h,Math.max(o.w,o.h)],
+    height:o=>[o.h,o.w],width:o=>[o.w,o.h],
+  }[opt.sort];
+  const list=items.map(it=>({it,...orientItem(it,opt.orient)}))
+    .sort((a,b)=>{const ka=key(a),kb=key(b);return kb[0]-ka[0]||kb[1]-ka[1]});
+  const placed=[];
+  const hit=(x,y,w,h)=>
+    obs.some(o=>!(x+w+m<=o.x+1e-6||o.x+o.w+m<=x+1e-6||y+h+m<=o.y+1e-6||o.y+o.h+m<=y+1e-6))||
+    placed.some(o=>!(x+w+m<=o.x+1e-6||o.x+o.w+m<=x+1e-6||y+h+m<=o.y+1e-6||o.y+o.h+m<=y+1e-6));
+  for(const o of list){
+    let best=null;
+    const vars=Math.abs(o.w-o.h)<0.5?[[o.w,o.h]]:[[o.w,o.h],[o.h,o.w]];
+    for(const[w,h]of vars){
+      const xs=new Set([0,W-w]),ys=new Set([0,H-h]);
+      for(const r of[...obs,...placed]){
+        xs.add(r.x+r.w+m);xs.add(r.x-m-w);xs.add(r.x);xs.add(r.x+r.w-w);
+        ys.add(r.y+r.h+m);ys.add(r.y-m-h);ys.add(r.y);ys.add(r.y+r.h-h);
+      }
+      for(const x of xs){
+        if(x<-1e-6||x+w>W+1e-6)continue;
+        for(const y of ys){
+          if(y<-1e-6||y+h>H+1e-6)continue;
+          if(hit(x,y,w,h))continue;
+          let s;
+          if(!placed.length)s=opt.score==='lb'?[x,y]:[y,x];
+          else{
+            const x1=Math.min(x,...placed.map(p=>p.x)),y1=Math.min(y,...placed.map(p=>p.y));
+            const x2=Math.max(x+w,...placed.map(p=>p.x+p.w)),y2=Math.max(y+h,...placed.map(p=>p.y+p.h));
+            const A=(x2-x1)*(y2-y1);
+            s=opt.score==='bl'?[y,x]:opt.score==='lb'?[x,y]:opt.score==='h'?[y2-y1,A]:opt.score==='w'?[x2-x1,A]:[A,y,x];
+          }
+          if(!best||s[0]<best.s[0]-1e-6||(Math.abs(s[0]-best.s[0])<1e-6&&s[1]<best.s[1]-1e-6))
+            best={x,y,w,h,s};
+        }
+      }
+    }
+    if(!best)return null;
+    placed.push({x:best.x,y:best.y,w:best.w,h:best.h,item:o.it});
+  }
+  return placed;
+}
+
+// 矩形同士がつながっているか（離れ小島がないか）
+function isConnected(ps,m){
+  if(ps.length<2)return true;
+  const near=(a,b)=>{
+    const gx=Math.max(a.x,b.x)-Math.min(a.x+a.w,b.x+b.w);
+    const gy=Math.max(a.y,b.y)-Math.min(a.y+a.h,b.y+b.h);
+    return gx<=m*2+1&&gy<=m*2+1&&(gx<=0||gy<=0);
+  };
+  const seen=new Set([0]),stack=[0];
+  while(stack.length){const i=stack.pop();ps.forEach((q,j)=>{if(!seen.has(j)&&near(ps[i],q)){seen.add(j);stack.push(j)}})}
+  return seen.size===ps.length;
+}
+
 function placeBlockGroup(items,pattern,obsByBoard,W,H,m){
   const nB=obsByBoard.length;
   const obsAt=bi=>obsByBoard[bi]||[];
@@ -1483,10 +1552,26 @@ function placeBlockGroup(items,pattern,obsByBoard,W,H,m){
       }
     }
   }
-  if(cands.length){
-    const minBi=Math.min(...cands.map(c=>c.bi));
-    const c=pickByPattern(cands.filter(c=>c.bi===minBi),pattern);
-    return{out:c.rel.map(p=>({bi:c.bi,x:c.x+p.x,y:c.y+p.y,w:p.w,h:p.h,item:p.item})),fails:0};
+  // 若い番号のアートボードから順に、
+  //  ① ブロックのまま入る → ② 空き（L字など）に回り込めば入る を試す
+  for(let bi=0;bi<=nB;bi++){
+    const bc=cands.filter(c=>c.bi===bi);
+    if(bc.length){
+      const c=pickByPattern(bc,pattern);
+      return{out:c.rel.map(p=>({bi,x:c.x+p.x,y:c.y+p.y,w:p.w,h:p.h,item:p.item})),fails:0};
+    }
+    if(!obsAt(bi).length)continue;
+    let res=[];
+    for(const opt of FREE_OPTS){
+      const r=freePack(items,obsAt(bi),W,H,m,opt);
+      if(!r||!isConnected(r,m))continue;
+      const b=bboxOf(r);res.push({r,bw:b.w,bh:b.h,area:b.w*b.h,x:b.x,y:b.y});
+    }
+    if(!res.length)continue;
+    const minA=Math.min(...res.map(c=>c.area));
+    res=res.filter(c=>c.area<=minA*1.5);
+    const c=pickByPattern(res,pattern);
+    return{out:c.r.map(p=>({bi,x:p.x,y:p.y,w:p.w,h:p.h,item:p.item})),fails:0};
   }
   // 1枚に収まらない大きなCSV → 空のアートボードから複数枚に分けて棚詰め
   let e=nB;
